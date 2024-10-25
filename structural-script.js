@@ -13,8 +13,6 @@ const tableDataRow2 = document.getElementById('table-data-row-2');
 // conditional water containers
 const sewerRatesContainer = document.getElementById('sewer-rates-container');
 const residentialWaterRatesContainer = document.getElementById('residential-water-rates-container');
-const waterIsIndoorMenu = document.getElementById('water-is-indoor-menu');
-const residentialWaterRatesOutdoorMenuInputContainer = document.getElementById('outdoor-menu-input-container');
 const commercialWaterRatesContainer = document.getElementById('commercial-water-rates-container');
 const reclaimedWaterRatesContainer = document.getElementById('reclaimed-water-rates-container');
 const electricRatesContainer = document.getElementById('electric-rates-container');
@@ -196,13 +194,6 @@ electricBillCalculatorForm.addEventListener('submit', (event) => {
     }
 });
 electricCustomerClassMenu.addEventListener('change', (event) => containerCoordinator('electric', event?.target.value));
-
-// residential water menu event listeners
-waterIsIndoorMenu.addEventListener('change', (event) => {
-    const isOutdoor = event?.target.value === 'false';
-    if (isOutdoor) showContainer([residentialWaterRatesOutdoorMenuInputContainer], [true]);
-    else showContainer([residentialWaterRatesOutdoorMenuInputContainer], [false]);
-});
 
 // water event listeners
 waterPrivateFireIncludedMenu.addEventListener('change', (event) => {

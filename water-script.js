@@ -17,7 +17,6 @@ let data = {
     },
     water: {
         isSingleFamily: false,
-        isIndoorBudget: false,
         isResidential: false,
         billingCycleDays: 0,
         customerClass: '',
@@ -137,61 +136,71 @@ const findVariableWaterCost = (year) => {
     const singleFamilyHouseSizeConstant = 4;
     const multiFamilyHouseSizeConstant = 2;
     const householdSizeConstant = data.water.isSingleFamily ? singleFamilyHouseSizeConstant : multiFamilyHouseSizeConstant;
-    
+
     const billingUnitGallons = 748; // 1 billing unit = 1 hundred cubic feet (HCF) = 748 gallons
     const gallonsPerPersonPerDayAllotment = 47;
     const outdoorEfficiencyFactorConstant = 0.8; // also called plant factor
     
     const indoorHCFBillingUnitsBudget = (householdSizeConstant * gallonsPerPersonPerDayAllotment * data.water.billingCycleDays) / billingUnitGallons;
     const outdoorHCFBillingUnitsBudget = (data.water.irrigatedAreaSquareFeet * (data.water.evapotranspirationRateInches / 12) * outdoorEfficiencyFactorConstant) / 100;
-    const budget = data.water.isIndoorBudget ? indoorHCFBillingUnitsBudget : outdoorHCFBillingUnitsBudget;
-    
-    
+    const budget = indoorHCFBillingUnitsBudget + outdoorHCFBillingUnitsBudget;
+
     const isResidential = data.waterIsResidential;
-    const isCommercial = !data.waterIsResidential;
     
     const usedHCFBillingUnits = isResidential ? data.water.usedHCFBillingUnits : data.commercial.usedHCFBillingUnits;
     
     const tierBilling = { tier1: 0, tier2: 0, tier3: 0, tier4: 0, tier5: 0 };
     
-    for (let accruedBillingUnits = 0; accruedBillingUnits < usedHCFBillingUnits; accruedBillingUnits++) {
-        if (year === 2024 && isResidential) {
-            if (accruedBillingUnits <= budget) tierBilling[data.water.isIndoorBudget ? 'tier1' : 'tier2'] += 1;
-            else if (budget < accruedBillingUnits && accruedBillingUnits <= (budget * 1.50)) tierBilling['tier3'] += 1;
-            else if ((budget * 1.50) < accruedBillingUnits && accruedBillingUnits <= (budget * 2.00)) tierBilling['tier4'] += 1;
-            else if ((budget * 2.00) < accruedBillingUnits) tierBilling['tier5'] += 1;
-            else return 'No tier found.';
-        } else if (year !== 2024 && isResidential) {
-            if (accruedBillingUnits <= budget) tierBilling[data.water.isIndoorBudget ? 'tier1' : 'tier2'] += 1;
-            else if (budget < accruedBillingUnits && accruedBillingUnits <= (budget * 1.50)) tierBilling['tier3'] += 1;
-            else if ((budget * 1.50) < accruedBillingUnits) tierBilling['tier4'] += 1;
-            else return 'No tier found.';
-        } else if (year === 2024 && isCommercial) {
-            const billingHistoryYears = Object.values(data.commercial.commercialUsedHCFBillingUnits).filter(value => value).length;
-            const commercialBudget = findCommercialWaterBudget(billingHistoryYears);
-            
-            if (!billingHistoryYears || accruedBillingUnits <= commercialBudget) tierBilling['tier1'] += 1;
-            else if (commercialBudget < accruedBillingUnits && accruedBillingUnits <= (commercialBudget * 1.50)) tierBilling['tier2'] += 1;
-            else if ((commercialBudget * 1.50) < accruedBillingUnits && accruedBillingUnits <= (commercialBudget * 2.00)) tierBilling['tier3'] += 1;
-            else if ((commercialBudget * 2.00) < accruedBillingUnits) tierBilling['tier4'] += 1;
-            else return 'No tier found.';
-        } else if (year !== 2024 && isCommercial) {
-            const billingHistoryYears = Object.values(data.commercial.commercialUsedHCFBillingUnits).filter(value => value).length;
-            const commercialBudget = findCommercialWaterBudget(billingHistoryYears);
-            
-            if (!billingHistoryYears || accruedBillingUnits <= commercialBudget) tierBilling['tier1'] += 1;
-            else if (commercialBudget < accruedBillingUnits && accruedBillingUnits <= (commercialBudget * 1.50)) tierBilling['tier2'] += 1;
-            else if ((commercialBudget * 1.50) < accruedBillingUnits) tierBilling['tier3'] += 1;
-            else return 'No tier found.';
-        } else {
-            return 'No tier found.';
+    // console.log(indoorHCFBillingUnitsBudget, outdoorHCFBillingUnitsBudget);
+
+    if (isResidential) {
+        for (let accruedBillingUnits = 0; accruedBillingUnits < usedHCFBillingUnits; accruedBillingUnits++) {
+            if (year === 2024) {
+                if (accruedBillingUnits <= indoorHCFBillingUnitsBudget) tierBilling['tier1'] += 1;
+                else if (indoorHCFBillingUnitsBudget < accruedBillingUnits && accruedBillingUnits <= budget) tierBilling['tier2'] += 1;
+                else if (budget < accruedBillingUnits && accruedBillingUnits <= (budget * 1.50)) tierBilling['tier3'] += 1;
+                else if ((budget * 1.50) < accruedBillingUnits && accruedBillingUnits <= (budget * 2.00)) tierBilling['tier4'] += 1;
+                else if ((budget * 2.00) < accruedBillingUnits) tierBilling['tier5'] += 1;
+                else return 'No tier found.';
+            } else {
+                if (accruedBillingUnits <= indoorHCFBillingUnitsBudget) tierBilling['tier1'] += 1;
+                else if (indoorHCFBillingUnitsBudget < accruedBillingUnits && accruedBillingUnits <= budget) tierBilling['tier2'] += 1;
+                else if (budget < accruedBillingUnits && accruedBillingUnits <= (budget * 1.50)) tierBilling['tier3'] += 1;
+                else if ((budget * 1.50) < accruedBillingUnits) tierBilling['tier4'] += 1;
+                else return 'No tier found.';
+            }
+        }
+    } else {
+        for (let accruedBillingUnits = 0; accruedBillingUnits < usedHCFBillingUnits; accruedBillingUnits++) {
+            if (year === 2024) {
+                const billingHistoryYears = Object.values(data.commercial.commercialUsedHCFBillingUnits).filter(value => value).length;
+                const commercialBudget = findCommercialWaterBudget(billingHistoryYears);
+                
+                if (!billingHistoryYears || accruedBillingUnits <= commercialBudget) tierBilling['tier1'] += 1;
+                else if (commercialBudget < accruedBillingUnits && accruedBillingUnits <= (commercialBudget * 1.50)) tierBilling['tier2'] += 1;
+                else if ((commercialBudget * 1.50) < accruedBillingUnits && accruedBillingUnits <= (commercialBudget * 2.00)) tierBilling['tier3'] += 1;
+                else if ((commercialBudget * 2.00) < accruedBillingUnits) tierBilling['tier4'] += 1;
+                else return 'No tier found.';
+            } else if (year !== 2024) {
+                const billingHistoryYears = Object.values(data.commercial.commercialUsedHCFBillingUnits).filter(value => value).length;
+                const commercialBudget = findCommercialWaterBudget(billingHistoryYears);
+                
+                if (!billingHistoryYears || accruedBillingUnits <= commercialBudget) tierBilling['tier1'] += 1;
+                else if (commercialBudget < accruedBillingUnits && accruedBillingUnits <= (commercialBudget * 1.50)) tierBilling['tier2'] += 1;
+                else if ((commercialBudget * 1.50) < accruedBillingUnits) tierBilling['tier3'] += 1;
+                else return 'No tier found.';
+            } else {
+                return 'No tier condition met.';
+            }
         }
     }
+
     
     const customerClass = isResidential ? 'residential' : 'commercial';
     
     
     const tierBillingEntries = Object.entries(tierBilling);
+    // console.log(tierBillingEntries);
     const tierBillingCosts = tierBillingEntries.map(([tier, units]) => {
         const tierRate = waterRates.variable[customerClass][year][tier];
         if (tierRate) return tierRate * units;

@@ -34,7 +34,7 @@
                             </select>
                         </div>
                         <div class="menu-input-container">
-                            <label for="sewer-customer-clusass-menu">Customer Class</label>
+                            <label for="sewer-customer-class-menu">Customer Class</label>
                             <select id="sewer-customer-class-menu" name="sewer[customerClass]">
                                 <option value="">Please select a customer class.</option>
                                 <option value="Residential">Residential</option>
@@ -63,6 +63,7 @@
                                 <option value='[4, 4"]'>4"</option>
                                 <option value='[6, 6"]'>6"</option>
                                 <option value='[8, 8"]'>8"</option>
+                                <option value='[10, 10"]'>10"</option>
                             </select>
                         </div>
                         <div class="menu-input-container">
@@ -78,17 +79,8 @@
                     <!-- above is shown if sewer rates calculator is chosen -->
 
                     <!-- below is shown if residential water rates calculator is chosen -->
-                    <div id="residential-water-rates-container" style="display: none;">
-                        <div class="menu-input-container">
-                            <label for="water-is-indoor-menu">Indoor</label>
-                            <select id="water-is-indoor-menu" name="water[isIndoorBudget]">
-                                <option value="">Please select an option.</option>
-                                <option value="true">True (Indoor)</option>
-                                <option value="false">False (Outdoor)</option>
-                            </select>
-                        </div>
-                    
-                        <div id="outdoor-menu-input-container" style="display: none;">
+                    <div id="residential-water-rates-container" style="display: none;">                    
+                        <div id="outdoor-menu-input-container">
                             <div class="menu-input-container">
                                 <label for="water-irrigated-area-input">Irrigated Area (Square Feet)</label>
                                 <input 
@@ -147,15 +139,16 @@
                                 <option value='[4, 4"]'>4"</option>
                                 <option value='[6, 6"]'>6"</option>
                                 <option value='[8, 8"]'>8"</option>
+                                <option value='[10, 10"]'>10"</option>
                             </select>
                         </div>
 
                         <div class="menu-input-container">
-                            <label for="water-is-single-family-menu">Single Family</label>
+                            <label for="water-is-single-family-menu">Single vs. Multi-Family</label>
                             <select id="water-is-single-family-menu" name="water[isSingleFamily]">
                                 <option value="">Please select an option.</option>
-                                <option value="true">True (Single Family)</option>
-                                <option value="false">False (Multi-Family)</option>
+                                <option value="true">Single Family</option>
+                                <option value="false">Multi-Family</option>
                             </select>
                         </div>
                     
@@ -181,6 +174,7 @@
                                 <option value='4"'>4"</option>
                                 <option value='6"'>6"</option>
                                 <option value='8"'>8"</option>
+                                <option value='10"'>10"</option>
                             </select>
                         </div>
                     </div>
@@ -300,6 +294,7 @@
                                 <option value='[4, 4"]'>4"</option>
                                 <option value='[6, 6"]'>6"</option>
                                 <option value='[8, 8"]'>8"</option>
+                                <option value='[10, 10"]'>10"</option>
                             </select>
                         </div>
 
@@ -325,6 +320,7 @@
                                 <option value='4"'>4"</option>
                                 <option value='6"'>6"</option>
                                 <option value='8"'>8"</option>
+                                <option value='10"'>10"</option>
                             </select>
                         </div>
                     </div>                    
@@ -355,6 +351,7 @@
                                 <option value='[4, 4"]'>4"</option>
                                 <option value='[6, 6"]'>6"</option>
                                 <option value='[8, 8"]'>8"</option>
+                                <option value='[10, 10"]'>10"</option>
                             </select>
                         </div>
 
@@ -431,11 +428,11 @@
                 <!-- below are inputs only shown for the residential customer class -->
                 <div id="electric-residential-inputs-container" style="display: none;">
                     <div class="menu-input-container">
-                        <label for="electric-is-single-family-menu">Family Type</label>
+                        <label for="electric-is-single-family-menu">Single vs. Multi-Family</label>
                         <select id="electric-is-single-family-menu" name="familyType">
                             <option value="">Please select an option.</option>
-                            <option value="singleFamily">Single Family</option>
-                            <option value="multiFamily">Multi-Family</option>
+                            <option value="true">Single Family</option>
+                            <option value="false">Multi-Family</option>
                         </select>
                     </div>
 
@@ -651,7 +648,7 @@
             <!-- above is shown if electric rates calculator is chosen -->
 
             <table>
-                <caption>Calculated Rates</caption>
+                <caption>Estimated Charges</caption>
                 <thead>
                     <tr>
                         <th scope="col" id="seasons-header" style="display: none;">Seasons</th>
