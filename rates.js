@@ -1,16 +1,298 @@
-/* NOTE: global variables from rates.js file are accessible because of html <script> tag */
+/**
+* NOTE: global variables from files like rates.js and structural-script.js are accessible because of html <script> tag
+* kW (kilowatts): This measures real or working power, the actual work done by electrical equipment,
+* kVAR (kilovolt-amperes reactive): This measures reactive power, the part of electricity that
+does no useful work but is necessary to maintain the voltage levels for the system.
+* kVA (kilovolt-amperes): This measures apparent power, which includes both real power (kW) and reactive power (kVAR)
+*/
+
+let electricFormData = {
+    // ALL
+    kWhTotalMonthlyEnergyUsage: 0,
+    // ONLY residential
+    familyType: false,
+    numberOfResidentElectricVehicles: 0,
+    // ONLY largeCommercialTOUGS3, industrialTOU8
+    kWSummerOnPeakDemand: 0,
+    kWSummerMidPeakDemand: 0,
+    // ONLY largeCommercialTOUGS3, industrialTOU8, pumpingAndAgriculture
+    kWhSummerOnPeakEnergyUsage: 0,
+    kWhSummerMidPeakEnergyUsage: 0,
+    kWhSummerOffPeakEnergyUsage: 0,
+    kWhWinterMidPeakEnergyUsage: 0,
+    kWhWinterOffPeakEnergyUsage: 0,
+    // ONLY largeCommercialTOUGS3, industrialTOU8, pumpingAndAgriculture, mediumCommercialGS2
+    kWFacilitiesRelatedDemand: 0,
+    // ONLY largeCommercialTOUGS3, industrialTOU8, pumpingAndAgriculture, commercialEVChargingRate
+    kVARReactivePower: 0,
+    // ONLY largeCommercialTOUGS3, industrialTOU8, pumpingAndAgriculture, mediumCommercialGS2, commercialEVChargingRate
+    kWPeakFrom4PMto9PMDemand: 0,
+    // ONLY smallCommercialGS1, trafficControlTC1
+    phaseType: '',
+    // ONLY commercialEVChargingRate
+    kWMonthDemandPeak: 0,
+    kWhEnergyOnPeak4To9PMEnergyUsage: 0,
+    kWhEnergyOffPeak4To9PMEnergyUsage: 0,
+    // ONLY commercialEVChargingRate (for bills before 2025 trying to calculate kWhEnergyOnPeak4To9PMEnergyUsage)
+    kWhSummerOnPeakCalculator: 0,
+    kWhSummerMidPeakCalculator: 0,
+    kWhWinterMidPeakCalculator: 0,
+};
+
+const kWhSummerOnPeakCalculatorInput = document.getElementById('summer-on-peak-energy-calculator-input');
+const kWhSummerMidPeakCalculatorInput = document.getElementById('summer-mid-peak-energy-calculator-input');
+const kWhWinterMidPeakCalculatorInput = document.getElementById('winter-mid-peak-energy-calculator-input');
+
+kWhSummerOnPeakCalculatorInput.addEventListener('change', (event) => electricFormData.kWhSummerOnPeakCalculator = +event?.target.value);
+kWhSummerMidPeakCalculatorInput.addEventListener('change', (event) => electricFormData.kWhSummerMidPeakCalculator = +event?.target.value);
+kWhWinterMidPeakCalculatorInput.addEventListener('change', (event) => electricFormData.kWhWinterMidPeakCalculator = +event?.target.value);
+
+
+const kWhEnergyOnPeak4To9PMEnergyUsageEstimator = (season) => {
+    const averageAmountOfMonthlyWeekdays = 21.74;
+    const averageAmountOfMonthlyWeekendDays = 8.7;
+
+    const kWhSummer4To9PMPeakUsageEstimate = kWhSummerOnPeakCalculatorInput + kWhSummerMidPeakCalculatorInput;
+    
+    const kWhWinter4To9PMPeakPerWeekdayEstimate = kWhWinterMidPeakCalculatorInput / averageAmountOfMonthlyWeekdays;
+    const kWhWinter4To9PMPeakWeekendsEstimate = kWhWinter4To9PMPeakPerWeekdayEstimate * averageAmountOfMonthlyWeekendDays;
+    const kWhWinter4To9PMPeakUsageEstimate = kWhWinterMidPeakCalculatorInput + kWhWinter4To9PMPeakWeekendsEstimate;
+
+    return season === 'Summer' ? kWhSummer4To9PMPeakUsageEstimate : kWhWinter4To9PMPeakUsageEstimate;
+}
+
+const setElectricFormData = (event) => {
+    const formData = new FormData(event.currentTarget);
+    const formDataEntries = Array.from(formData.entries());
+    
+    electricFormData = Object.fromEntries(formDataEntries);
+    
+    for (const [key, value] of formDataEntries) {
+        if (value === 'true') electricFormData[key] = true;
+        else if (value === 'false') electricFormData[key] = false;
+        else if (!isNaN(value) && value.trim() !== '') electricFormData[key] = Number(value);
+        else electricFormData[key] = value;
+    }
+}
+
+const findVariableElectricCharge = (year, season) => {
+    const residentialRates = electricRates.residential;
+    let kWhBaseline = (season === 'Summer') ? residentialRates.kWhSummerBaseline : residentialRates.kWhWinterBaseline;
+    const totalElectricVehiclesBoost = electricFormData.numberOfResidentElectricVehicles * residentialRates.kWhElectricVehicleBaselineBoost;
+    kWhBaseline += totalElectricVehiclesBoost;
+    
+    const tierBilling = { tier1: 0, tier2: 0, tier3: 0, tier4: 0 };
+    
+    // console.log(kWhBaseline, electricFormData.kWhTotalMonthlyEnergyUsage);
+
+    for (let kWhAccruedUsage = 0; kWhAccruedUsage < electricFormData.kWhTotalMonthlyEnergyUsage; kWhAccruedUsage += 0.001) {
+        if (year === 2024) {
+            if (kWhAccruedUsage <= kWhBaseline) tierBilling['tier1'] += 0.001;
+            else if (kWhBaseline < kWhAccruedUsage && kWhAccruedUsage <= (kWhBaseline * 1.30)) tierBilling['tier2'] += 0.001;
+            else if ((kWhBaseline * 1.30) < kWhAccruedUsage && kWhAccruedUsage <= (kWhBaseline * 2.00)) tierBilling['tier3'] += 0.001;
+            else if ((kWhBaseline * 2.00) < kWhAccruedUsage) tierBilling['tier4'] += 0.001;
+        } else {
+            if (kWhAccruedUsage <= kWhBaseline) tierBilling['tier1'] += 0.001;
+            else if (kWhBaseline < kWhAccruedUsage && kWhAccruedUsage <= (kWhBaseline * 1.30)) tierBilling['tier2'] += 0.001;
+            else if ((kWhBaseline * 1.30) < kWhAccruedUsage) tierBilling['tier3'] += 0.001;
+        }
+    }
+
+    const tierBillingEntries = Object.entries(tierBilling);
+    
+    // console.log(tierBillingEntries);
+
+    const tierBillingCosts = tierBillingEntries.map(([tier, units]) => {
+        const tierRate = electricRates.residential[year][tier];
+        if (tierRate) { 
+            return operate({
+                operandValues: [tierRate, units],
+                operandNames: [`${tier.toUpperCase()} Rate`, 'kWh Usage'],
+                operator: '*',
+                category: `${year} ${season.toUpperCase()} Estimated Charges`,
+            });
+        } else return 0;
+    });
+
+    return getArraySum(tierBillingCosts);
+}
+
+const findElectricFixedUsageAndDemandRates = (year, season) => {
+    let fixedTotalCharges = 0;
+    let kWTotalCharges = 0;
+    let kWhTotalCharges = 0;
+    let totalPublicBenefitsCharges = 0;
+    let isTaxedByState = true;
+    
+    if (customerClass === 'residential') {
+        const customerClassAndYear = electricRates[customerClass][year];
+
+        const fixedCost = year === 2024 ? 
+            customerClassAndYear.fixed[electricFormData.familyType] :
+            customerClassAndYear.fixed;
+        const publicBenefitsCost = year === 2024 ? 
+            0 :
+            customerClassAndYear.publicBenefits * electricFormData.kWhTotalMonthlyEnergyUsage;
+
+        fixedTotalCharges += fixedCost;
+        kWhTotalCharges += findVariableElectricCharge(year, season);
+        kWhTotalCharges += publicBenefitsCost;
+    } else if (['smallCommercialGS1', 'trafficControlTC1'].includes(customerClass)) {
+        const customerClassAndYear = electricRates[customerClass][year];
+
+        // *Note: total cost for Three Phase customer will include Single Phase rate plus Three Phase rate.
+        fixedTotalCharges += (electricFormData.phaseType === 'singlePhase' ?
+            customerClassAndYear.fixed[electricFormData.phaseType] :
+            getArraySum(Object.values(customerClassAndYear.fixed)));
+        if (year === 2024 && customerClass === 'smallCommercialGS1') {
+            kWhTotalCharges += customerClassAndYear.variable[season] * electricFormData.kWhTotalMonthlyEnergyUsage;
+        } else {
+            kWhTotalCharges += customerClassAndYear.variable * electricFormData.kWhTotalMonthlyEnergyUsage
+        };
+        totalPublicBenefitsCharges += (year === 2024 ? 0 : customerClassAndYear.publicBenefits * electricFormData.kWhTotalMonthlyEnergyUsage);
+    } else if (customerClass === 'mediumCommercialGS2') {
+        const customerClassAndYear = electricRates[customerClass][year];
+        
+        fixedTotalCharges += customerClassAndYear.fixed;
+
+        const kWPowerSupplyPeakDemandCost = electricFormData.kWPeakFrom4PMto9PMDemand * customerClassAndYear.kWDemandPowerSupplyPeak;
+        const kWDistributionFacilitiesDemandCost = electricFormData.kWFacilitiesRelatedDemand * customerClassAndYear.kwDemandDistributionFacilities;
+        const demandCosts = kWPowerSupplyPeakDemandCost + kWDistributionFacilitiesDemandCost;
+        
+        // **Summer Peak is used for current rates: 4-9 pm during summer months. Peak will be used for proposed rates: 4-9 pm year-round.
+        if (year === 2024) {
+            kWTotalCharges += (season === 'Summer' ? kWPowerSupplyPeakDemandCost : 0);
+            kWTotalCharges +=  kWDistributionFacilitiesDemandCost;
+            kWhTotalCharges += customerClassAndYear.variable[season] * electricFormData.kWhTotalMonthlyEnergyUsage;
+        } else {
+            kWTotalCharges += demandCosts;
+            kWhTotalCharges += customerClassAndYear.variable * electricFormData.kWhTotalMonthlyEnergyUsage;
+            totalPublicBenefitsCharges += customerClassAndYear.publicBenefits * electricFormData.kWhTotalMonthlyEnergyUsage
+        }
+    } else if (['largeCommercialTOUGS3', 'industrialTOU8', 'pumpingAndAgriculture'].includes(customerClass)) {
+        const isSummer = season === 'Summer';
+        const isPumpingAndAgriculture = customerClass === 'pumpingAndAgriculture';
+        const customerClassAndYear = electricRates[customerClass][year];
+
+        let kWDemandPowerSupplyPeak = 0;
+        let kWDemandDistributionFacilities = 0;
+
+        if (year === 2024 && !isPumpingAndAgriculture) {
+            kWDemandPowerSupplyPeak = customerClassAndYear.kWDemandPowerSupplyPeak[season];
+            kWDemandDistributionFacilities = customerClassAndYear.kWDemandDistributionFacilities;
+        } else if (year === 2025 && !isSummer && isPumpingAndAgriculture) {
+            kWDemandPowerSupplyPeak = customerClassAndYear.kWDemandPowerSupplyPeak.january;
+            kWDemandDistributionFacilities = customerClassAndYear.kWDemandDistributionFacilities.january;
+        } else if (year === 2025 && isSummer && isPumpingAndAgriculture) { 
+            kWDemandPowerSupplyPeak = customerClassAndYear.kWDemandPowerSupplyPeak.july;
+            kWDemandDistributionFacilities = customerClassAndYear.kWDemandDistributionFacilities.july;
+        } else {
+            kWDemandPowerSupplyPeak = customerClassAndYear.kWDemandPowerSupplyPeak;
+            kWDemandDistributionFacilities = customerClassAndYear.kWDemandDistributionFacilities;
+        }
+
+        const kWPowerSupplyPeakDemandCost = electricFormData.kWPeakFrom4PMto9PMDemand * kWDemandPowerSupplyPeak;
+        const kWDistributionFacilitiesDemandCost = electricFormData.kWFacilitiesRelatedDemand * kWDemandDistributionFacilities;
+        const kWPeakReactiveDemandCost = electricFormData.kVARReactivePower * customerClassAndYear.powerFactorAdjustment;
+        const demandCosts = kWPowerSupplyPeakDemandCost + kWDistributionFacilitiesDemandCost + kWPeakReactiveDemandCost;
+        
+        fixedTotalCharges += customerClassAndYear.fixed;
+
+        if (isSummer) {
+            kWhTotalCharges += customerClassAndYear.variable.summerOnPeak * electricFormData.kWhSummerOnPeakEnergyUsage; 
+            kWhTotalCharges += customerClassAndYear.variable.summerMidPeak * electricFormData.kWhSummerMidPeakEnergyUsage; 
+            kWhTotalCharges += customerClassAndYear.variable.summerOffPeak * electricFormData.kWhSummerOffPeakEnergyUsage; 
+        } else {
+            kWhTotalCharges += customerClassAndYear.variable.winterMidPeak * electricFormData.kWhWinterMidPeakEnergyUsage; 
+            kWhTotalCharges += customerClassAndYear.variable.winterOffPeak * electricFormData.kWhWinterOffPeakEnergyUsage; 
+        }
+        
+        // ***Summer Peak and Summer Mid-Peak are used for current rates. Peak will be used for proposed rates: 4-9 pm year-round.
+        if (year === 2024 && !isPumpingAndAgriculture) {
+            kWTotalCharges += (isSummer ? customerClassAndYear.kWDemandPowerSupplyPeak.summerOnPeak * electricFormData.kWSummerOnPeakDemand: 0);
+            kWTotalCharges += (isSummer ? customerClassAndYear.kWDemandPowerSupplyPeak.summerMidPeak * electricFormData.kWSummerMidPeakDemand: 0);
+            kWTotalCharges += customerClassAndYear.kWDemandDistributionFacilities * electricFormData.kWFacilitiesRelatedDemand;
+        } else {
+            kWTotalCharges += demandCosts;
+            totalPublicBenefitsCharges += customerClassAndYear.publicBenefits * electricFormData.kWhTotalMonthlyEnergyUsage;
+        }
+    } else if (['outdoorAreaLightingAL2', 'streetLightingLS3'].includes(customerClass)) {
+        const customerClassAndYear = electricRates[customerClass][year];
+        fixedTotalCharges += customerClassAndYear.fixed;
+        kWhTotalCharges += customerClassAndYear.variable * electricFormData.kWhTotalMonthlyEnergyUsage;
+        totalPublicBenefitsCharges += (year === 2024 ? 0 : customerClassAndYear.publicBenefits * electricFormData.kWhTotalMonthlyEnergyUsage)
+    } else if (customerClass === 'commercialEVChargingRate') {
+        if (year !== 2024) {
+            const customerClassAndYear = electricRates[customerClass][year];
+            
+            const kWhEnergyOnPeak4to9PM = customerClassAndYear.kWhEnergyOnPeak4to9PM ? customerClassAndYear.kWhEnergyOnPeak4to9PM : kWhEnergyOnPeak4To9PMEnergyUsageEstimator(season);
+            const kWPowerSupplyPeakDemandCost = electricFormData.kWMonthDemandPeak * customerClassAndYear.kWDemandMonth;
+            const kWPeakReactiveDemandCost = electricFormData.kVARReactivePower * customerClassAndYear.powerFactorAdjustment;
+            const demandCosts = kWPowerSupplyPeakDemandCost + kWPeakReactiveDemandCost;
+            
+            fixedTotalCharges += customerClassAndYear.fixed;
+
+            kWTotalCharges += demandCosts;
+
+            totalPublicBenefitsCharges += customerClassAndYear.publicBenefits * electricFormData.kWhTotalMonthlyEnergyUsage;
+            kWhTotalCharges += kWhEnergyOnPeak4to9PM * electricFormData.kWhEnergyOnPeak4To9PMEnergyUsage;
+            kWhTotalCharges += customerClassAndYear.kWhEnergyOffPeak * electricFormData.kWhEnergyOffPeak4To9PMEnergyUsage;
+        } else isTaxedByState = false;
+    } else return 'No customer class found.';
+    
+    return { fixedTotalCharges, kWTotalCharges, kWhTotalCharges, totalPublicBenefitsCharges, isTaxedByState };
+}
+
+const getElectricRate = (event) => {
+    setElectricFormData(event);
+    const seasons = ['Winter', 'Summer'];
+    
+    const winterCosts = [];
+    const summerCosts = [];
+    
+    let seasonIndex = 0;
+    while (seasonIndex < seasons.length) {
+        const season = seasons[seasonIndex].toLowerCase();
+        
+        for (let year = 2024; year <= 2029; year++) {
+            const { fixedTotalCharges, kWTotalCharges, kWhTotalCharges, totalPublicBenefitsCharges, isTaxedByState } = findElectricFixedUsageAndDemandRates(year, season);
+            
+            const stateTaxCharge = isTaxedByState ? electricRates.kWhStateTax * electricFormData.kWhTotalMonthlyEnergyUsage : 0;
+            
+            const totalCosts = operate({
+                operandValues: [fixedTotalCharges, kWTotalCharges, kWhTotalCharges, totalPublicBenefitsCharges, stateTaxCharge],
+                operandNames: ['Fixed Charges', 'kW Charges', 'kWh Charges', 'Public Benefits Charge', 'State Tax Charge'],
+                operator: '+',
+                category: `${year} ${season.toUpperCase()} Estimated Charges`,
+            });
+
+            if (seasonIndex === 0) winterCosts.push(totalCosts);
+            else summerCosts.push(totalCosts);
+        }
+        
+        seasonIndex += 1;
+    }
+
+    resetCosts();
+    costs.push({ seasons, seasonalCosts: [winterCosts, summerCosts] });
+
+    createTable(true);
+}
+
+/* NOTE: global variables from files like rates.js and structural-script.js are accessible because of html <script> tag */
 
 const sewerRates = {
     fixed: {
         2024: {
-            insideStandardWastewater: 45.60, // 'Residential', 'Mobile Home Parks (Per Space)'
+            insideStandardWastewater: 45.60, // 'Residential', 'City Park Restroom', 'Mobile Home Parks (Per Space)'
+            insideStandardWastewaterMobileHome: 45.60, // 'Mobile Home Parks (Per Space)'
             motelsAndHotelsPerUnit: 7.59, // 'Motels', 'Hotels'
             motelsAndHotelsPerLivingUnit: 45.60, // 'Motels', 'Hotels'
-            commercialLessThanOrEqualToOneInchMeter: 163.28, // 'Restaurants', 'Supermarkets', 'Mortuaries', 'Bakeries'
-            commercialGreaterThanOneInchMeter: 266.34, // 'Restaurants', 'Supermarkets', 'Mortuaries', 'Bakeries'
+            retailFoodAndEssentialServicesMeterLessThanOrEqualToOneInch: 163.28, // 'Restaurants', 'Supermarkets', 'Mortuaries', 'Bakeries'
+            retailFoodAndEssentialServicesMeterGreaterThanOneInch: 266.34, // 'Restaurants', 'Supermarkets', 'Mortuaries', 'Bakeries'
             laundries: 24.20, // 'Laundries'
             insideCommercial: {
-                '5/8"': 45.60, // City Park Restroom
+                '5/8"': 45.60,
                 '3/4"': 72.02,
                 '1"': 103.48,
                 '1 1/2"': 186.06,
@@ -938,4 +1220,631 @@ const electricRates = {
         }
     },
     kWhStateTax: 0.0003,
+}
+
+/* NOTE: global variables from files like rates.js and structural-script.js are accessible because of html <script> tag */
+
+// static containers
+const waterBillCalculatorForm = document.getElementById('water-bill-calculator-form');
+const electricBillCalculatorForm = document.getElementById('electric-bill-calculator-form');
+const calculationResultDiv = document.getElementById('calculation-result-div');
+const tableDataRow = document.getElementById('table-data-row');
+const chargeBreakdownContainer = document.getElementById('charge-breakdown-container');
+
+// conditional general containers
+const seasonsHeader = document.getElementById('seasons-header');
+const tableDataRow2 = document.getElementById('table-data-row-2');
+
+// conditional sewer containers
+const generalNonResidentialContainer = document.getElementById('general-non-residential-container');
+const insideCommercialContainer = document.getElementById('inside-commercial-container');
+const mobileHomeParksPerSpaceContainer = document.getElementById('mobile-home-parks-per-space-container');
+const motelsAndHotelsPerUnitContainer = document.getElementById('motels-and-hotels-per-unit-container');
+const motelsAndHotelsPerLivingUnitContainer = document.getElementById('motels-and-hotels-per-living-unit-container');
+const retailFoodAndEssentialServicesContainer = document.getElementById('retail-food-and-essential-services-container');
+
+// conditional water containers
+const sewerRatesContainer = document.getElementById('sewer-rates-container');
+const residentialWaterRatesContainer = document.getElementById('residential-water-rates-container');
+const commercialWaterRatesContainer = document.getElementById('commercial-water-rates-container');
+const reclaimedWaterRatesContainer = document.getElementById('reclaimed-water-rates-container');
+const electricRatesContainer = document.getElementById('electric-rates-container');
+const privateFireIncludedCommercialContainer = document.getElementById('private-fire-included-commercial-container');
+const privateFireIncludedContainer = document.getElementById('private-fire-included-container');
+
+// conditional electric containers
+const electricUniversalInputsContainer = document.getElementById('electric-universal-inputs-container');
+const electricResidentialInputsContainer = document.getElementById('electric-residential-inputs-container');
+const electricTOUGS3TOU8InputsContainer = document.getElementById('electric-TOUGS3-TOU8-inputs-container');
+const electricTOUGS3TOU8PAInputsContainer = document.getElementById('electric-TOUGS3-TOU8-PA-inputs-container');
+const electricTOUGS3TOU8PACOMMEVInputContainer = document.getElementById('electric-TOUGS3-TOU8-PA-COMMEV-input-container');
+const electricTOUGS3TOU8PAGS2COMMEVInputContainer = document.getElementById('electric-TOUGS3-TOU8-PA-GS2-COMMEV-input-container');
+const electricTOUGS3TOU8PAGS2InputContainer = document.getElementById('electric-TOUGS3-TOU8-PA-GS2-input-container');
+const electricGS1TC1InputContainer = document.getElementById('electric-GS1-TC1-input-container');
+const electricCOMMEVInputContainer = document.getElementById('electric-COMMEV-input-container');
+
+// general elements
+const customerClassMenu = document.getElementById('calculator-type-menu');
+
+// residential water elements
+const waterPrivateFireIncludedMenu = document.getElementById('water-private-fire-included-menu');
+
+// commercial water elements
+const commercialPrivateFireIncludedMenu = document.getElementById('commercial-water-private-fire-included-menu');
+
+let customerClass = '';
+let utilityType = '';
+
+const costs = [];
+
+let operations = {};
+
+const resetDataDisplayElements = () => {
+    seasonsHeader.style.display = 'none';
+    while (tableDataRow.firstChild) {
+        tableDataRow.removeChild(tableDataRow.firstChild);
+    }
+    
+    while (tableDataRow2.firstChild) {
+        tableDataRow2.removeChild(tableDataRow2.firstChild);
+    }
+
+    while(chargeBreakdownContainer.firstChild) {
+        chargeBreakdownContainer.removeChild(chargeBreakdownContainer.firstChild);
+    }
+};
+
+const getArraySum = (array) => array.reduce((acc, curr) => acc += curr);
+
+const getArrayProduct = (array) => array.reduce((acc, curr) => acc *= curr);
+
+const roundToNthDecimalPlace = (number, decimalPlaces) => {
+    const factor = Math.pow(10, decimalPlaces);
+    return (Math.round(number * factor) / factor).toFixed(2);
+};
+
+const formatCost = (cost) => {
+    const isNumber = !isNaN(cost);
+
+    if (isNumber && cost > 0) return `$${roundToNthDecimalPlace(cost, 2)}`;
+    else return '--';
+}
+
+const operate = ({operandValues = [], operandNames = [], operator, category}) => {
+    let total = 0;
+    const categoryExists = operations[category];
+
+    if (operator === '*') total = getArrayProduct(operandValues);
+    else if (operator === '+') total = getArraySum(operandValues);
+    else return 'No operator found.';
+
+    const roundedValues = operandValues.map((operandValue) => roundToNthDecimalPlace(operandValue, 2));
+    const operationAndTotal = `${operandNames.join(` ${operator} `)} = Total Charges\n${roundedValues.join(` ${operator} `)} = ${formatCost(total)}`;
+    if (!categoryExists && category) operations[category] = [operationAndTotal];
+    else if (!categoryExists && !category) operations['General Charges'] = [operationAndTotal];
+    else operations[category].push(operationAndTotal);
+
+    return total;
+};
+
+const displayOperations = () => {
+    const operationEntries = Object.entries(operations);
+
+    operationEntries.forEach(([category, operations]) => {
+        const chargeContainer = document.createElement('div');
+        const chargeHeader = document.createElement('h3');
+        chargeHeader.innerText = category;
+
+        chargeContainer.appendChild(chargeHeader);
+        operations.forEach(operation => {
+            const operationParagraph = document.createElement('p');
+            operationParagraph.innerText = operation;
+            chargeContainer.appendChild(operationParagraph);
+        });
+
+        chargeBreakdownContainer.appendChild(chargeContainer);
+    });
+}
+
+const resetCosts = () => costs.length = 0;
+
+const resetOperations = () => operations = {};
+
+const makeInputsRequired = (boolean) => {
+    const inputs = document.querySelectorAll('input, select, textarea');
+    inputs.forEach(input => {
+        const isVisible = input.offsetParent !== null;
+
+        if (boolean && isVisible) input.setAttribute('required', true);
+        else input.removeAttribute('required');
+    });
+};
+
+const showContainer = (containers, showBooleans) => {
+    makeInputsRequired(false);
+    resetDataDisplayElements();
+    containers.forEach((container, index) => {
+        showBooleans[index] ?
+        container.setAttribute('style', 'display: "";') : 
+        container.setAttribute('style', 'display: none;');
+    });
+    makeInputsRequired(true);
+};
+
+const createTable = (seasonal) => {
+    const years = [2024, 2025, 2026, 2027, 2028, 2029];
+
+    if (seasonal) {
+        showContainer([seasonsHeader, tableDataRow2], [true, true]);
+        
+        const { seasons, seasonalCosts } = costs[0];
+        
+        const winterHeader = document.createElement('th');
+        winterHeader.id = 'winter-row';
+        winterHeader.scope = 'row';
+        winterHeader.innerText = `${seasons[0]}\n(Four Months)`;
+        tableDataRow.appendChild(winterHeader);
+        seasonalCosts[0].forEach((cost, index) => {
+            const tableDataElement = document.createElement('td');
+            tableDataElement.id = `${years[index]}-${seasons[0].toLowerCase()}-cost`;
+            tableDataElement.innerText = `Month Estimation: ${formatCost(cost)}\n\nWinter Estimation: ${formatCost(cost * 4)}`;
+
+            tableDataRow.appendChild(tableDataElement);
+        });
+
+        const summerHeader = document.createElement('th');
+        summerHeader.id ='summer-row';
+        summerHeader.scope = 'row';
+        summerHeader.innerText = `${seasons[1]}\n(Eight Months)`;
+        tableDataRow2.appendChild(summerHeader);
+        seasonalCosts[1].forEach((cost, index) => {
+            const tableDataElement = document.createElement('td');
+            tableDataElement.id = `${years[index]}-${seasons[1].toLowerCase()}-cost`;
+            tableDataElement.innerText = `Month Estimation: ${formatCost(cost)}\n\nSummer Estimation: ${formatCost(cost * 8)}`;
+
+            tableDataRow2.appendChild(tableDataElement);
+        });
+    } else {
+        showContainer([seasonsHeader, tableDataRow2], [false, false]);
+
+        costs.forEach((cost, index) => {
+            const tableDataElement = document.createElement('td');
+            tableDataElement.id = `${years[index]}-cost`;
+            tableDataElement.textContent = formatCost(cost);
+    
+            tableDataRow.appendChild(tableDataElement);
+        });
+    }
+
+    displayOperations();
+    resetOperations();
+}
+
+const containerCoordinator = (sewerCustomerGroup) => {
+    if (!utilityType || !customerClass) {
+        showContainer([waterBillCalculatorForm, electricBillCalculatorForm], [false, false]);
+        return;
+    }
+    
+    if (utilityType === 'Sewer') {
+        showContainer([waterBillCalculatorForm, sewerRatesContainer, residentialWaterRatesContainer, commercialWaterRatesContainer, reclaimedWaterRatesContainer, electricBillCalculatorForm], [true, true, false, false, false, false]);
+        if (sewerCustomerGroup === 'insideStandardWastewater') showContainer([generalNonResidentialContainer, mobileHomeParksPerSpaceContainer, insideCommercialContainer, motelsAndHotelsPerUnitContainer, motelsAndHotelsPerLivingUnitContainer, retailFoodAndEssentialServicesContainer], [false, false, false, false, false, false]);
+        else if (sewerCustomerGroup === 'insideStandardWastewaterMobileHome') showContainer([generalNonResidentialContainer, mobileHomeParksPerSpaceContainer, insideCommercialContainer, motelsAndHotelsPerUnitContainer, motelsAndHotelsPerLivingUnitContainer, retailFoodAndEssentialServicesContainer], [true, true, false, false, false, false])
+        else if (sewerCustomerGroup === 'motelsAndHotelsPerUnit') showContainer([generalNonResidentialContainer, motelsAndHotelsPerUnitContainer, insideCommercialContainer, mobileHomeParksPerSpaceContainer, motelsAndHotelsPerLivingUnitContainer, retailFoodAndEssentialServicesContainer], [true, true, false, false, false, false])
+        else if (sewerCustomerGroup === 'motelsAndHotelsPerLivingUnit') showContainer([generalNonResidentialContainer, motelsAndHotelsPerLivingUnitContainer, insideCommercialContainer, mobileHomeParksPerSpaceContainer, motelsAndHotelsPerUnitContainer, retailFoodAndEssentialServicesContainer], [true, true, false, false, false, false])
+        else if (sewerCustomerGroup === 'retailFoodAndEssentialServices') showContainer([generalNonResidentialContainer,retailFoodAndEssentialServicesContainer, insideCommercialContainer, mobileHomeParksPerSpaceContainer, motelsAndHotelsPerUnitContainer, motelsAndHotelsPerLivingUnitContainer], [true, true, false, false, false, false])
+        else if (sewerCustomerGroup === 'insideCommercial') showContainer([generalNonResidentialContainer, insideCommercialContainer, mobileHomeParksPerSpaceContainer, motelsAndHotelsPerUnitContainer, motelsAndHotelsPerLivingUnitContainer, retailFoodAndEssentialServicesContainer], [true, true, false, false, false, false])
+    } else if (['Water', 'Sewer'].includes(utilityType)) {
+        if (customerClass === 'Residential Water') showContainer([waterBillCalculatorForm, residentialWaterRatesContainer, commercialWaterRatesContainer, sewerRatesContainer, reclaimedWaterRatesContainer, electricBillCalculatorForm], [true, true, false, false, false, false]);
+        else if (customerClass === 'Commercial Water') showContainer([waterBillCalculatorForm, commercialWaterRatesContainer, residentialWaterRatesContainer, sewerRatesContainer, reclaimedWaterRatesContainer, electricBillCalculatorForm], [true, true, false, false, false, false]);
+        else if (customerClass === 'Reclaimed Water') showContainer([waterBillCalculatorForm, reclaimedWaterRatesContainer, sewerRatesContainer, residentialWaterRatesContainer, commercialWaterRatesContainer, electricBillCalculatorForm], [true, true, false, false, false, false]);
+    } else if (utilityType === 'Electric') {
+        showContainer([electricBillCalculatorForm, electricUniversalInputsContainer, waterBillCalculatorForm], [true, true, false], true);
+        if (customerClass === 'residential') showContainer([electricResidentialInputsContainer, electricTOUGS3TOU8InputsContainer, electricTOUGS3TOU8PACOMMEVInputContainer, electricTOUGS3TOU8PAGS2COMMEVInputContainer, electricTOUGS3TOU8PAGS2InputContainer, electricGS1TC1InputContainer, electricCOMMEVInputContainer, electricTOUGS3TOU8PAInputsContainer], [true, false, false, false, false, false, false, false]);
+        else if (customerClass === 'smallCommercialGS1') showContainer([electricGS1TC1InputContainer, electricResidentialInputsContainer, electricTOUGS3TOU8InputsContainer, electricTOUGS3TOU8PACOMMEVInputContainer, electricTOUGS3TOU8PAGS2COMMEVInputContainer, electricTOUGS3TOU8PAGS2InputContainer, electricCOMMEVInputContainer, electricTOUGS3TOU8PAInputsContainer], [true, false, false, false, false, false, false, false]);
+        else if (customerClass === 'mediumCommercialGS2') showContainer([electricTOUGS3TOU8PAGS2COMMEVInputContainer, electricTOUGS3TOU8PAGS2InputContainer, electricGS1TC1InputContainer, electricResidentialInputsContainer, electricTOUGS3TOU8InputsContainer, electricTOUGS3TOU8PACOMMEVInputContainer, electricCOMMEVInputContainer, electricTOUGS3TOU8PAInputsContainer], [true, true, false, false, false, false, false, false]);
+        else if (['largeCommercialTOUGS3', 'industrialTOU8'].includes(customerClass)) showContainer([electricTOUGS3TOU8PAGS2COMMEVInputContainer, electricTOUGS3TOU8PAGS2InputContainer, electricTOUGS3TOU8InputsContainer, electricTOUGS3TOU8PACOMMEVInputContainer, electricTOUGS3TOU8PAInputsContainer, electricGS1TC1InputContainer, electricResidentialInputsContainer, electricCOMMEVInputContainer], [true, true, true, true, true, false, false, false]);
+        else if (customerClass === 'pumpingAndAgriculture') showContainer([electricTOUGS3TOU8PAInputsContainer, electricTOUGS3TOU8PAGS2COMMEVInputContainer, electricTOUGS3TOU8PAGS2InputContainer, electricTOUGS3TOU8PACOMMEVInputContainer, electricTOUGS3TOU8InputsContainer, electricGS1TC1InputContainer, electricResidentialInputsContainer, electricCOMMEVInputContainer], [true, true, true, true, false, false, false, false]);
+        else if (customerClass === 'trafficControlTC1') showContainer([electricGS1TC1InputContainer, electricTOUGS3TOU8PAGS2COMMEVInputContainer, electricTOUGS3TOU8PAGS2InputContainer, electricResidentialInputsContainer, electricTOUGS3TOU8InputsContainer, electricTOUGS3TOU8PACOMMEVInputContainer, electricCOMMEVInputContainer, electricTOUGS3TOU8PAInputsContainer], [true, false, false, false, false, false, false, false]);
+        else if (customerClass === 'commercialEVChargingRate') showContainer([electricTOUGS3TOU8PACOMMEVInputContainer, electricCOMMEVInputContainer, electricGS1TC1InputContainer, electricTOUGS3TOU8PAGS2COMMEVInputContainer, electricTOUGS3TOU8PAGS2InputContainer, electricResidentialInputsContainer, electricTOUGS3TOU8InputsContainer, electricTOUGS3TOU8PAInputsContainer], [true, true, false, false, false, false, false, false]);
+    } else return 'No utility type found.';
+}
+
+// Call the function to set the inputs as required
+makeInputsRequired();
+
+// general event listeners
+customerClassMenu.addEventListener('change', (event) => {
+    const selectMenuEvent = event?.currentTarget;
+    const selectedMenuOption = selectMenuEvent.options[selectMenuEvent.selectedIndex];
+
+    const customerClassValue = selectMenuEvent.value;
+    const utilityTypeValue = selectedMenuOption.getAttribute('data-group');
+    
+    customerClass = customerClassValue;
+    utilityType = utilityTypeValue;
+    containerCoordinator();
+
+    if (utilityType === 'Sewer') findSewerCustomerClassGroup();
+});
+waterBillCalculatorForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+    try {
+        if (utilityType === 'Sewer') getSewerRate(event);
+        else if (customerClass === 'Residential Water') getWaterRate(event);
+        else if (customerClass === 'Commercial Water') getWaterRate(event);
+        else if (customerClass === 'Reclaimed Water') getReclaimedWaterRate(event);
+        createTable();
+    } catch (error) {
+        console.error(error);
+    }
+});
+
+// electric event listeners
+electricBillCalculatorForm.addEventListener('submit', (event) => { 
+    event.preventDefault();
+    try {
+        getElectricRate(event);
+    } catch (error) {
+        console.error(error);
+    }
+});
+
+// water event listeners
+waterPrivateFireIncludedMenu.addEventListener('change', (event) => {
+    const privateFireIncluded = event?.target.value === 'true';
+    if (privateFireIncluded) showContainer([privateFireIncludedContainer], [true]);
+    else showContainer([privateFireIncludedContainer], [false]);
+});
+
+// commercial water menu event listeners
+commercialPrivateFireIncludedMenu.addEventListener('change', (event) => {
+    const privateFireIncluded = event?.target.value === 'true';
+    if (privateFireIncluded) showContainer([privateFireIncludedCommercialContainer], [true]);
+    else showContainer([privateFireIncludedCommercialContainer], [false]);
+});
+
+/**
+ * NOTE: global variables from files like rates.js and structural-script.js are accessible because of html <script> tag
+ * 
+ * ET gets divided by 12 so that it comes out to feet since it's in inches
+ * The denominator of the budgets is often 100 so that it comes out to hundred cubic feet
+ * commercialBillingCycleDays: three past years' billing cycle days for a given month
+ * commercialUsedHCFBillingUnits: three past years' usage for a given month
+ */
+
+let data = {
+    waterIsResidential: false,
+    sewer: {
+        isResidential: false,
+        meterSize: { decimal: 0, fraction: '' },
+        usedHCFBillingUnits: 0,
+        numberOfSpaces: 0,
+        numberOfUnits: 0,
+        numberOfLivingUnits: 0,
+        isMeterSizeGreaterThan1Inch: false,
+    },
+    water: {
+        householdMembers: 0,
+        isResidential: false,
+        billingCycleDays: 0,
+        evapotranspirationRateInches: 0,
+        usedHCFBillingUnits: 0,
+        irrigatedAreaSquareFeet: 0,
+        meterSize: { decimal: 0, fraction: '' },
+        privateFireIncluded: false,
+        privateFireMeterSize: '',
+    },
+    commercial: {
+        usedHCFBillingUnits: 0,
+        billingCycleDays: 0,
+        commercialBillingCycleDays: { 1: 0, 2: 0, 3: 0 },
+        commercialUsedHCFBillingUnits: { 1: 0, 2: 0, 3: 0 },
+        meterSize: { decimal: 0, fraction: '' },
+        privateFireIncluded: false,
+        privateFireMeterSize: '',
+    },
+    reclaimed: {
+        usedHCFBillingUnits: 0,
+        meterSize: { decimal: 0, fraction: '' },
+        irrigatedAreaSquareFeet: 0,
+        evapotranspirationRateInches: 0,
+    }
+};
+
+const setWaterFormData = (event) => {
+    const formData = new FormData(event.currentTarget);
+    const formDataEntries = Array.from(formData.entries());
+    
+    for (const [key, value] of formDataEntries) {
+        const singleNestedStringObjectRegex = /^(\w+)\[(\w+)\]$/;
+        const singleNestedMatches = key.match(singleNestedStringObjectRegex);
+
+        const doubleNestedStringObjectRegex = /^(\w+)\[(\w+)\]\[(\w+)\]$/;
+        const doubleNestedMatches = key.match(doubleNestedStringObjectRegex);
+        
+        if (singleNestedMatches) {
+            const key1 = singleNestedMatches[1]; // e.g. sewer[name] => sewer
+            const key2 = singleNestedMatches[2]; // e.g. sewer[name] => name
+
+            if (key2 === 'meterSize') {
+                const [decimal, fraction] = value.replace(/[\[\]]/g, '').split(', ');
+                data[key1].meterSize = { decimal: +decimal, fraction: fraction };
+            } else {
+                if (!data[key1]) data[key1] = {};
+
+                
+                if (value === 'true') data[key1][key2] = true;
+                else if (value === 'false') data[key1][key2] = false;
+                else if (!isNaN(value) && value.trim() !== '') data[key1][key2] = Number(value);
+                else data[key1][key2] = value;
+            }
+        } else {
+            const key1 = doubleNestedMatches[1]; // e.g. commercial[billingCycleDays][1] => commercial
+            const key2 = doubleNestedMatches[2]; // e.g. commercial[billingCycleDays][1] => billingCycleDays
+            const key3 = doubleNestedMatches[3]; // e.g. commercial[billingCycleDays][1] => 1
+        
+            if (!data[key1]) data[key1] = {};
+            if (!data[key1][key2]) data[key1][key2] = {};
+
+            if (value === 'true') data[key1][key2][key3] = true;
+            else if (value === 'false') data[key1][key2][key3] = false;
+            else if (!isNaN(value) && value.trim() !== '') data[key1][key2][key3] = Number(value);
+            else data[key1][key2][key3] = value;
+        }
+    }
+}
+
+const findSewerCustomerClassGroup = () => {
+    const group1 = [['Residential', 'City Park Restroom', 'Mobile Home Parks (Per Space)'], 'insideStandardWastewater'];
+    const group2 = [['Motels (Per Unit)', 'Hotels (Per Unit)'], 'motelsAndHotelsPerUnit'];
+    const group3 = [['Motels (Per Living Unit)', 'Hotels (Per Living Unit)'], 'motelsAndHotelsPerLivingUnit'];
+    const group4 = [['Restaurants', 'Supermarkets', 'Mortuaries', 'Bakeries'], 'retailFoodAndEssentialServices'];
+    const group5 = [['Laundries'], 'laundries'];
+    const group6 = [['Inside Commercial'], 'insideCommercial'];
+
+    if (group1[0].includes(customerClass)) {
+        const customerClassGroup = group1[1];
+        const isMobileHome = customerClass === 'Mobile Home Parks (Per Space)';
+        const sewerCustomerClassGroup = `${customerClassGroup}${isMobileHome ? 'MobileHome' : ''}`;
+
+        containerCoordinator(sewerCustomerClassGroup);
+        return sewerCustomerClassGroup;
+    } else if (group2[0].includes(customerClass)) { 
+        containerCoordinator(group2[1]);
+        return group2[1];
+    } else if (group3[0].includes(customerClass)) { 
+        containerCoordinator(group3[1]);
+        return group3[1];
+    } else if (group4[0].includes(customerClass)) { 
+        containerCoordinator(group4[1]);
+        return group4[1] + (data.sewer.isMeterSizeGreaterThan1Inch ? 'GreaterThanOneInchMeter' : 'LessThanOrEqualToOneInchMeter');
+    } else if (group5[0].includes(customerClass)) {
+        containerCoordinator(group5[1]);
+        return group5[1];
+    } else if (group6[0].includes(customerClass)) { 
+        containerCoordinator(group6[1]);
+        return group6[1];
+    } else return 'No customer class found.';
+}
+
+const getSewerRate = (event) => {
+    resetCosts();
+    setWaterFormData(event);
+    const hcfBillingUnitsBudget = 8;
+    
+    const customerClassGroup = findSewerCustomerClassGroup();
+
+    for (let year = 2024; year <= 2029; year++) {
+        if (year === 2024) {
+            if (customerClassGroup === 'insideCommercial') {
+                costs.push(operate({
+                    operandValues: [sewerRates.fixed[2024][customerClassGroup][data.sewer.meterSize.fraction]],
+                    operandNames: ['Fixed Charge at Meter Size'],
+                    operator: '+',
+                    category: `${year} Estimated Charges`,
+                }));
+            } else if (customerClassGroup === 'insideStandardWastewaterMobileHome') {
+                costs.push(operate({
+                    operandValues: [sewerRates.fixed[2024][customerClassGroup], data.sewer.numberOfSpaces],
+                    operandNames: ['Base Fixed Charge', 'Number of Spaces'],
+                    operator: '*',
+                    category: `${year} Estimated Charges`,
+                }));
+            } else if (customerClassGroup === 'motelsAndHotelsPerUnit') {
+                costs.push(operate({
+                    operandValues: [sewerRates.fixed[2024][customerClassGroup], data.sewer.numberOfUnits],
+                    operandNames: ['Base Fixed Charge', 'Number of Units'],
+                    operator: '*',
+                    category: `${year} Estimated Charges`,
+                 }));
+            } else if (customerClassGroup === 'motelsAndHotelsPerLivingUnit') {
+                costs.push(operate({
+                    operandValues: [sewerRates.fixed[2024][customerClassGroup], data.sewer.numberOfLivingUnits],
+                    operandNames: ['Base Fixed Charge', 'Number of Living Units'],
+                    operator: '*',
+                    category: `${year} Estimated Charges`,
+                 }));
+            } else {
+                costs.push(operate({
+                    operandValues: [sewerRates.fixed[2024][customerClassGroup]],
+                    operandNames: ['Fixed Charge'],
+                    operator: '+',
+                    category: `${year} Estimated Charges`,
+                }));
+            };
+        } else {
+            const fixedCharge = sewerRates.fixed[year];
+            const mustPayVariableCharge = customerClass !== 'Residential' && data.sewer.usedHCFBillingUnits > hcfBillingUnitsBudget;
+            const variableCharge = mustPayVariableCharge ? sewerRates.variable[year] * (data.sewer.usedHCFBillingUnits - hcfBillingUnitsBudget) : 0;
+
+            costs.push(operate({
+                operandValues: [fixedCharge, variableCharge],
+                operandNames: ['Fixed Charge', 'Variable Charge'],
+                operator: '+',
+                category: `${year} Estimated Charges`,
+            }));
+        }
+    }
+}
+
+const findCommercialWaterBudget = (billingHistoryYears) => {
+    // no billing history years means that the customer is on their first year, Tier 1 rates are expected in that case
+    if (billingHistoryYears === 1) {
+        return getArraySum(Object.values(data.commercial.commercialUsedHCFBillingUnits).filter(value => value));
+    } else if (billingHistoryYears >= 2) {
+        const commercialUsedHCFBillingUnitsSum = getArraySum(Object.values(data.commercial.commercialUsedHCFBillingUnits).filter(value => value));
+        const commercialBillingCycleDaysSum = getArraySum(Object.values(data.commercial.commercialBillingCycleDays).filter(value => value));
+        const commercialAverageDailyHCFBillingUnitsUsage = commercialUsedHCFBillingUnitsSum / commercialBillingCycleDaysSum;
+        return commercialAverageDailyHCFBillingUnitsUsage * data.commercial.billingCycleDays;
+    } else return 'No billing history found.';
+}
+
+const findVariableWaterCharge = (year) => {
+    const billingUnitGallons = 748; // 1 billing unit = 1 hundred cubic feet (HCF) = 748 gallons
+    const gallonsPerPersonPerDayAllotment = 47;
+    const outdoorEfficiencyFactorConstant = 0.8; // also called plant factor
+    
+    const indoorHCFBillingUnitsBudget = (data.water.householdMembers * gallonsPerPersonPerDayAllotment * data.water.billingCycleDays) / billingUnitGallons;
+    const outdoorHCFBillingUnitsBudget = (data.water.irrigatedAreaSquareFeet * (data.water.evapotranspirationRateInches / 12) * outdoorEfficiencyFactorConstant) / 100;
+    const budget = indoorHCFBillingUnitsBudget + outdoorHCFBillingUnitsBudget;
+
+    const isResidential = data.waterIsResidential;
+    
+    const usedHCFBillingUnits = isResidential ? data.water.usedHCFBillingUnits : data.commercial.usedHCFBillingUnits;
+    
+    const tierBilling = { tier1: 0, tier2: 0, tier3: 0, tier4: 0, tier5: 0 };
+    
+    // console.log(indoorHCFBillingUnitsBudget, outdoorHCFBillingUnitsBudget);
+
+    if (isResidential) {
+        for (let accruedBillingUnits = 0; accruedBillingUnits < usedHCFBillingUnits; accruedBillingUnits += 0.001) {
+            if (year === 2024) {
+                if (accruedBillingUnits <= indoorHCFBillingUnitsBudget) tierBilling['tier1'] += 0.001;
+                else if (indoorHCFBillingUnitsBudget < accruedBillingUnits && accruedBillingUnits <= budget) tierBilling['tier2'] += 0.001;
+                else if (budget < accruedBillingUnits && accruedBillingUnits <= (budget * 1.50)) tierBilling['tier3'] += 0.001;
+                else if ((budget * 1.50) < accruedBillingUnits && accruedBillingUnits <= (budget * 2.00)) tierBilling['tier4'] += 0.001;
+                else if ((budget * 2.00) < accruedBillingUnits) tierBilling['tier5'] += 0.001;
+                else return 'No tier found.';
+            } else {
+                if (accruedBillingUnits <= indoorHCFBillingUnitsBudget) tierBilling['tier1'] += 0.001;
+                else if (indoorHCFBillingUnitsBudget < accruedBillingUnits && accruedBillingUnits <= budget) tierBilling['tier2'] += 0.001;
+                else if (budget < accruedBillingUnits && accruedBillingUnits <= (budget * 1.50)) tierBilling['tier3'] += 0.001;
+                else if ((budget * 1.50) < accruedBillingUnits) tierBilling['tier4'] += 0.001;
+                else return 'No tier found.';
+            }
+        }
+    } else {
+        const billingHistoryYears = Object.values(data.commercial.commercialUsedHCFBillingUnits).filter(value => value).length;
+        const commercialBudget = findCommercialWaterBudget(billingHistoryYears);
+        for (let accruedBillingUnits = 0; accruedBillingUnits < usedHCFBillingUnits; accruedBillingUnits += 0.001) {
+            if (year === 2024) {
+                if (!billingHistoryYears || accruedBillingUnits <= commercialBudget) tierBilling['tier1'] += 0.001;
+                else if (commercialBudget < accruedBillingUnits && accruedBillingUnits <= (commercialBudget * 1.50)) tierBilling['tier2'] += 0.001;
+                else if ((commercialBudget * 1.50) < accruedBillingUnits && accruedBillingUnits <= (commercialBudget * 2.00)) tierBilling['tier3'] += 0.001;
+                else if ((commercialBudget * 2.00) < accruedBillingUnits) tierBilling['tier4'] += 0.001;
+                else return 'No tier found.';
+            } else if (year !== 2024) {                
+                if (!billingHistoryYears || accruedBillingUnits <= commercialBudget) tierBilling['tier1'] += 0.001;
+                else if (commercialBudget < accruedBillingUnits && accruedBillingUnits <= (commercialBudget * 1.50)) tierBilling['tier2'] += 0.001;
+                else if ((commercialBudget * 1.50) < accruedBillingUnits) tierBilling['tier3'] += 0.001;
+                else return 'No tier found.';
+            } else {
+                return 'No tier condition met.';
+            }
+        }
+    }
+    
+    const residentialOrCommercial = isResidential ? 'residential' : 'commercial';
+    
+    const tierBillingEntries = Object.entries(tierBilling);
+
+    // console.log(tierBillingEntries);
+
+    const tierBillingCosts = tierBillingEntries.map(([tier, units]) => {
+        const tierRate = waterRates.variable[residentialOrCommercial][year][tier];
+        if (tierRate) {
+            return operate({
+                operandValues: [tierRate, units],
+                operandNames: [`${tier.toUpperCase()} Rate Estimated Charges`],
+                operator: '*',
+                category: `${year} Estimated Charges`,
+            });
+        } else return 0;
+    });
+
+    return getArraySum(tierBillingCosts);
+}
+
+// current and proposed rate formulas are identical
+const getWaterRate = (event) => {
+    resetCosts();
+    setWaterFormData(event);
+    
+    if (customerClass === 'Residential Water') data.waterIsResidential = true;
+    else if (customerClass === 'Commercial Water') data.waterIsResidential = false;
+
+    const meterFraction = data.waterIsResidential ? data.water.meterSize.fraction : data.commercial.meterSize.fraction;
+    const privateFireIncluded = data.waterIsResidential ? data.water.privateFireIncluded : data.commercial.privateFireIncluded;
+    const privateFireFraction = data.waterIsResidential ? data.water.privateFireMeterSize : data.commercial.privateFireMeterSize;
+
+    for (let year = 2024; year <= 2029; year++) {
+        const fixedCharge = waterRates.fixed.domestic[year][meterFraction];
+        const privateFire = privateFireIncluded ? waterRates.fixed.privateFire[year][privateFireFraction] : 0;
+        const variableCharge = findVariableWaterCharge(year);
+
+        costs.push(operate({
+            operandValues: [fixedCharge, privateFire, variableCharge],
+            operandNames: ['Fixed Charge', 'Private Fire', 'Variable Charge'],
+            operator: '+',
+            category: `${year} Estimated Charges`,
+        }))
+    }
+}
+
+const findReclaimedVariableCharge = (year) => {
+    const outdoorEfficiencyFactorConstant = 0.8; // also called plant factor
+    const reclaimedWaterBudget = data.reclaimed.irrigatedAreaSquareFeet * (data.reclaimed.evapotranspirationRateInches / 12) * outdoorEfficiencyFactorConstant;
+
+    const usedHCFBillingUnits = data.reclaimed.usedHCFBillingUnits;
+
+    const tierBilling = { tier1: 0, tier2: 0, tier3: 0, tier4: 0 };
+
+    for (let accruedBillingUnits = 0; accruedBillingUnits < usedHCFBillingUnits; accruedBillingUnits++) {
+        if (year === 2024) {
+            if (accruedBillingUnits <= reclaimedWaterBudget) tierBilling['tier1'] += 1;
+            else if (reclaimedWaterBudget < accruedBillingUnits && accruedBillingUnits <= (reclaimedWaterBudget * 1.50)) tierBilling['tier2'] += 1;
+            else if ((reclaimedWaterBudget * 1.50) < accruedBillingUnits && accruedBillingUnits <= (reclaimedWaterBudget * 2.00)) tierBilling['tier3'] += 1;
+            else if ((reclaimedWaterBudget * 2.00) < accruedBillingUnits) tierBilling['tier4'] += 1;
+            else return 'No tier found.';
+        } else {
+            tierBilling[accruedBillingUnits <= reclaimedWaterBudget ? 'tier1' : 'tier2'] += 1;
+        }
+    }
+
+    const tierBillingEntries = Object.entries(tierBilling);
+    const tierBillingCosts = tierBillingEntries.map(([tier, units]) => {
+        const tierRate = reclaimedWaterRates.variable[year][tier];
+        if (tierRate) return tierRate * units;
+        else return 0;
+    });
+
+    return getArraySum(tierBillingCosts);
+}
+
+// current and proposed rate formulas are identical
+const getReclaimedWaterRate = (event) => {
+    resetCosts();
+    setWaterFormData(event);
+    for (let year = 2024; year <= 2029; year++) {
+        const fixedCharge = reclaimedWaterRates.fixed[year][data.reclaimed.meterSize.fraction];
+        const variableCharge = findReclaimedVariableCharge(year);
+
+        costs.push(operate({
+            operandValues: [fixedCharge, variableCharge],
+            operandNames: ['Fixed Charge', 'Variable Charge'],
+            operator: '+',
+            category: `${year} Estimated Charges`,
+        }));
+    }
 }

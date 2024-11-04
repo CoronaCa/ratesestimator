@@ -7,6 +7,12 @@ body {
     color: #333;
 }
 
+#charge-breakdown-container {
+    max-height: 30vh;
+    overflow-y: auto;
+    border: 1px solid #1c4441;;
+}
+
 #external-form-wrapper {
     max-width: 75%;
     margin: 40px auto;
@@ -84,15 +90,9 @@ table {
     overflow-x: auto;
     border-collapse: collapse;
     margin-top: 20px;
-    border-radius: 10px;
 }
 
-caption {
-    caption-side: top;
-    text-align: left;
-    font-size: 1.2em;
-    font-weight: bold;
-    padding-bottom: 10px;
+h1, h2, h3, h4, h5, h6 {
     color: #1c4441;
 }
 

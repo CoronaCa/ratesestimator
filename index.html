@@ -11,69 +11,118 @@
             <div class="menu-input-container form-dimensions">
                 <label for="calculator-type-menu">Calculator Type</label>
                 <select id="calculator-type-menu" name="calculator-type-menu">
-                    <option value="">Please select a rate calculator.</option>
-                    <option value="Sewer Rates">Sewer Rates</option>
-                    <option value="Residential Water Rates">Residential Water Rates</option>
-                    <option value="Commercial Water Rates">Commercial Water Rates</option>
-                    <option value="Reclaimed Water Rates">Reclaimed Water Rates</option>
-                    <option value="Electric Rates">Electric Rates</option>
+                    <option data-group="" value="">Please select a rate calculator.</option>
+                    <optgroup label="Sewer">
+                        <option data-group="Sewer" value="Residential">Residential</option>
+                        <option data-group="Sewer" value="Inside Commercial">Inside Commercial</option>
+                        <option data-group="Sewer" value="Mobile Home Parks (Per Space)">Mobile Home Parks (Per Space)</option>
+                        <option data-group="Sewer" value="Motels (Per Unit)">Motels (Per Unit)</option>
+                        <option data-group="Sewer" value="Motels (Per Living Unit)">Motels (Per Living Unit)</option>
+                        <option data-group="Sewer" value="Hotels (Per Unit)">Hotels (Per Unit)</option>
+                        <option data-group="Sewer" value="Hotels (Per Living Unit)">Hotels (Per Living Unit)</option>
+                        <option data-group="Sewer" value="Restaurants">Restaurants</option>
+                        <option data-group="Sewer" value="Supermarkets">Supermarkets</option>
+                        <option data-group="Sewer" value="Mortuaries">Mortuaries</option>
+                        <option data-group="Sewer" value="Bakeries">Bakeries</option>
+                        <option data-group="Sewer" value="Laundries">Laundries</option>
+                        <option data-group="Sewer" value="City Park Restroom">City Park Restroom</option>
+                    </optgroup>
+                    <optgroup label="Water">
+                        <option data-group="Water" value="Residential Water">Residential</option>
+                        <option data-group="Water" value="Commercial Water">Commercial</option>
+                        <option data-group="Water" value="Reclaimed Water">Reclaimed</option>
+                    </optgroup>
+                    <optgroup label="Electric">
+                        <option data-group="Electric" value="residential">Residential</option>
+                        <option data-group="Electric" value="smallCommercialGS1">Small Commercial (GS1)</option>
+                        <option data-group="Electric" value="mediumCommercialGS2">Medium Commercial (GS2)</option>
+                        <option data-group="Electric" value="largeCommercialTOUGS3">Large Commercial (TOU-GS3)</option>
+                        <option data-group="Electric" value="industrialTOU8">Industrial (TOU-8)</option>
+                        <option data-group="Electric" value="outdoorAreaLightingAL2">Outdoor Area Lighting (AL2)</option>
+                        <option data-group="Electric" value="streetLightingLS3">Street Lighting (LS3)</option>
+                        <option data-group="Electric" value="trafficControlTC1">Traffic Control (TC1)</option>
+                        <option data-group="Electric" value="commercialEVChargingRate">Commercial EV Charging Rate</option>
+                        <option data-group="Electric" value="pumpingAndAgriculture">Pumping and Agriculture</option>
+                    </optgroup>
                 </select>
             </div>
             <!-- above is OUTSIDE OF FORM calculator type picker -->
 
             <form id="water-bill-calculator-form" style="display: none;">
                 <div id="internal-form-wrapper">
-                    <!-- below is shown if sewer rates calculator is chosen -->
+                    <!-- below is shown if sewer rates calculator is chosen -->                    
+                    <div id="general-non-residential-container" style="display: none;">
+                        <label for="sewer-hundred-cubic-feet-usage-menu">Sewer Usage (Billing Units)</label>
+                        <small>If you don't find this on your bill, estimate it by researching the average usage based on your type of business.</small>
+                        <input 
+                            id="sewer-hundred-cubic-feet-usage-menu"
+                            min="0"
+                            name="sewer[usedHCFBillingUnits]"
+                            type="number"
+                        >
+                    </div>
+
                     <div id="sewer-rates-container" style="display: none;">
-                        <div class="menu-input-container">
-                            <label for="sewer-is-residential-menu">Residential</label>
-                            <select id="sewer-is-residential-menu" name="sewer[isResidential]">
-                                <option value="">Please select an option.</option>
-                                <option value="true">True (Residential)</option>
-                                <option value="false">False (Commercial)</option>
-                            </select>
+                        <div id="inside-commercial-container" style="display: none;">
+                            <div class="menu-input-container">
+                                <label for="sewer-meter-size-menu">Meter Size (Inches)</label>
+                                <select id="sewer-meter-size-menu" name="sewer[meterSize]">
+                                    <option value="">Please select a meter size.</option>
+                                    <option value='[0.625, 5/8"]'>5/8"</option>
+                                    <option value='[0.75, 3/4"]'>3/4"</option>
+                                    <option value='[1, 1"]'>1"</option>
+                                    <option value='[1.5, 1 1/2"]'>1 1/2"</option>
+                                    <option value='[2, 2"]'>2"</option>
+                                    <option value='[3, 3"]'>3"</option>
+                                    <option value='[4, 4"]'>4"</option>
+                                    <option value='[6, 6"]'>6"</option>
+                                    <option value='[8, 8"]'>8"</option>
+                                </select>
+                            </div>
                         </div>
-                        <div class="menu-input-container">
-                            <label for="sewer-customer-class-menu">Customer Class</label>
-                            <select id="sewer-customer-class-menu" name="sewer[customerClass]">
-                                <option value="">Please select a customer class.</option>
-                                <option value="Residential">Residential</option>
-                                <option value="Mobile Home Parks (Per Space)">Mobile Home Parks (Per Space)</option>
-                                <option value="Motels (Per Unit)">Motels (Per Unit)</option>
-                                <option value="Motels (Per Living Unit)">Motels (Per Living Unit)</option>
-                                <option value="Hotels (Per Unit)">Hotels (Per Unit)</option>
-                                <option value="Hotels (Per Living Unit)">Hotels (Per Living Unit)</option>
-                                <option value="Restaurants">Restaurants</option>
-                                <option value="Supermarkets">Supermarkets</option>
-                                <option value="Mortuaries">Mortuaries</option>
-                                <option value="Bakeries">Bakeries</option>
-                                <option value="Laundries">Laundries</option>
-                            </select>
+
+                        <div id="mobile-home-parks-per-space-container" style="display: none;">
+                            <div class="menu-input-container">
+                                <label for="sewer-number-of-spaces-input">Number of Spaces</label>
+                                <input 
+                                    id="sewer-number-of-spaces-input"
+                                    min="1"
+                                    name="sewer[numberOfSpaces]"
+                                    type="number"
+                                >
+                            </div>
                         </div>
-                        <div class="menu-input-container">
-                            <label for="sewer-meter-size-menu">Meter Size (Inches)</label>
-                            <select id="sewer-meter-size-menu" name="sewer[meterSize]">
-                                <option value="">Please select a meter size.</option>
-                                <option value='[0.625, 5/8"]'>5/8"</option>
-                                <option value='[0.75, 3/4"]'>3/4"</option>
-                                <option value='[1, 1"]'>1"</option>
-                                <option value='[1.5, 1 1/2"]'>1 1/2"</option>
-                                <option value='[2, 2"]'>2"</option>
-                                <option value='[3, 3"]'>3"</option>
-                                <option value='[4, 4"]'>4"</option>
-                                <option value='[6, 6"]'>6"</option>
-                                <option value='[8, 8"]'>8"</option>
-                                <option value='[10, 10"]'>10"</option>
-                            </select>
+
+                        <div id="motels-and-hotels-per-unit-container" style="display: none;">
+                            <div class="menu-input-container">
+                                <label for="sewer-number-of-units-input">Number of Units</label>
+                                <input 
+                                    id="sewer-number-of-units-input"
+                                    min="1"
+                                    name="sewer[numberOfUnits]"
+                                    type="number"
+                                >
+                            </div>
                         </div>
-                        <div class="menu-input-container">
-                            <label for="sewer-hundred-cubic-feet-usage-menu">Sewer Usage (Billing Units)</label>
-                            <input 
-                                id="sewer-hundred-cubic-feet-usage-menu"
-                                min="0"
-                                name="sewer[usedHCFBillingUnits]"
-                                type="number"
-                            >
+
+                        <div id="motels-and-hotels-per-living-unit-container" style="display: none;">
+                            <div class="menu-input-container">
+                                <label for="sewer-number-of-living-units-input">Number of Living Units</label>
+                                <input 
+                                    id="sewer-number-of-living-units-input"
+                                    min="1"
+                                    name="sewer[numberOfLivingUnits]"
+                                    type="number"
+                                >
+                            </div>
+                        </div>
+
+                        <div id="retail-food-and-essential-services-container" style="display: none;">
+                            <label for="sewer-meter-size-greater-than-one-inch-menu">Is your meter size greater than 1"?</label>
+                            <select id="sewer-meter-size-greater-than-one-inch-menu" name="sewer[isMeterSizeGreaterThan1Inch]">
+                                <option value="true">Yes (meter size greater than one inch)</option>
+                                <option value="false">No (meter size less than or equal to one inch)</option>
+                            </select>
                         </div>
                     </div>
                     <!-- above is shown if sewer rates calculator is chosen -->
@@ -99,7 +148,7 @@
                                     min="0"
                                     name="water[evapotranspirationRateInches]"
                                     type="number"
-                                    step="0.1"
+                                    step="0.01"
                                 >
                             </div>
                         </div>
@@ -144,12 +193,15 @@
                         </div>
 
                         <div class="menu-input-container">
-                            <label for="water-is-single-family-menu">Single vs. Multi-Family</label>
-                            <select id="water-is-single-family-menu" name="water[isSingleFamily]">
-                                <option value="">Please select an option.</option>
-                                <option value="true">Single Family</option>
-                                <option value="false">Multi-Family</option>
-                            </select>
+                            <label for="household-members">Household Members</label>
+                            <input 
+                                id="household-members"
+                                min="1"
+                                max="100"
+                                name="water[householdMembers]"
+                                type="number"
+                                value="1"
+                            >
                         </div>
                     
                         <div class="menu-input-container">
@@ -204,7 +256,7 @@
                             >
                         </div>
 
-                        <h5>Water Billing Cycle Days for This Month</h5>
+                        <h4>Water Billing Cycle Days for This Month</h4>
                         <small>Leave as 0 days for the years you were not in business.</small>
                         <div class="row-container">
                             <div class="menu-input-container column-container">
@@ -244,8 +296,8 @@
                             </div>
                         </div>
                     
-                        <h5>Past Usage for This Month (Billing Units)</h5>
-                        <small>Leave as 0 for years you were not in business.</small>
+                        <h4>Past Usage for This Month (Billing Units)</h4>
+                        <small>Leave as 0 for the years you were not in business.</small>
                         <div class="row-container">
                             <div class="menu-input-container column-container">
                                 <label for="commercial-water-hundred-cubic-feet-past-usage-input-1">3 Years Ago</label>
@@ -373,7 +425,7 @@
                                 min="0"
                                 name="reclaimed[evapotranspirationRateInches]"
                                 type="number"
-                                step="0.1"
+                                step="0.01"
                             >
                         </div>
                     </div>
@@ -392,26 +444,9 @@
             
             <!-- below is shown if electric rates calculator is chosen -->
             <form id="electric-bill-calculator-form" style="display: none;">
+
                 <div id="electric-universal-inputs-container" style="display: none;">
-
                     <!-- below are inputs for all customer classes -->
-                    <div class="menu-input-container form-dimensions">
-                        <label for="electric-customer-class-menu">Customer Class</label>
-                        <select id="electric-customer-class-menu" name="customerClass">
-                            <option value="">Please select a customer class.</option>
-                            <option value="residential">Residential</option>
-                            <option value="smallCommercialGS1">Small Commercial (GS1)</option>
-                            <option value="mediumCommercialGS2">Medium Commercial (GS2)</option>
-                            <option value="largeCommercialTOUGS3">Large Commercial (TOU-GS3)</option>
-                            <option value="industrialTOU8">Industrial (TOU-8)</option>
-                            <option value="outdoorAreaLightingAL2">Outdoor Area Lighting (AL2)</option>
-                            <option value="streetLightingLS3">Street Lighting (LS3)</option>
-                            <option value="trafficControlTC1">Traffic Control (TC1)</option>
-                            <option value="commercialEVChargingRate">Commercial EV Charging Rate</option>
-                            <option value="pumpingAndAgriculture">Pumping and Agriculture</option>
-                        </select>
-                    </div>
-
                     <div class="menu-input-container">
                         <label for="totalMonthlyEnergyUsage">Total Monthly Energy Usage (kWh)</label>
                         <small>This is the number under the <i>Usage</i> column.</small>
@@ -431,8 +466,8 @@
                         <label for="electric-is-single-family-menu">Single vs. Multi-Family</label>
                         <select id="electric-is-single-family-menu" name="familyType">
                             <option value="">Please select an option.</option>
-                            <option value="true">Single Family</option>
-                            <option value="false">Multi-Family</option>
+                            <option value="singleFamily">Single Family</option>
+                            <option value="multiFamily">Multi-Family</option>
                         </select>
                     </div>
 
@@ -543,6 +578,7 @@
                         min="0"
                         name="kWPeakFrom4PMto9PMDemand"
                         type="number"
+                        step="0.01"
                     >
                 </div>
                 <!-- above is only shown for largeCommercialTOUGS3, industrialTOU8, pumpingAndAgriculture, mediumCommercialGS2, commercialEVChargingRate customer classes -->
@@ -555,6 +591,7 @@
                         min="0"
                         name="kWFacilitiesRelatedDemand"
                         type="number"
+                        step="0.01"
                     >
                 </div>
                 <!-- above is only shown for largeCommercialTOUGS3, industrialTOU8, pumpingAndAgriculture, mediumCommercialGS2 customer classes -->
@@ -579,6 +616,7 @@
                         min="0"
                         name="kWMonthDemandPeak"
                         type="number"
+                        step="0.01"
                     >
                     <small>The peak values below are on bills from 2024 and before. Use them if there is no <i>4 p.m. to 9 p.m. On-Peak Energy (kWh)</i> value on your bill.</small>
                     <div class="row-container">
@@ -590,6 +628,7 @@
                             name="kWhSummerOnPeakCalculator"
                             type="number"
                             value="0"
+                            step="0.01"
                             >
                         </div>
                         <div class="column-container">
@@ -622,6 +661,7 @@
                             name="kWhEnergyOnPeak4To9PMEnergyUsage"
                             type="number"
                             value="0"
+                            step="0.01"
                         >
 
                         <label for="off-peak-energy-4-to-9-pm-input">4 p.m. to 9 p.m. Off-Peak Energy (kWh)</label>
@@ -631,6 +671,7 @@
                             min="0"
                             name="kWhEnergyOffPeak4To9PMEnergyUsage"
                             type="number"
+                            step="0.01"
                         >
                 </div>
                 
@@ -647,8 +688,8 @@
             </form>
             <!-- above is shown if electric rates calculator is chosen -->
 
+            <h3>Estimated Charges:</h3>
             <table>
-                <caption>Estimated Charges</caption>
                 <thead>
                     <tr>
                         <th scope="col" id="seasons-header" style="display: none;">Seasons</th>
@@ -669,6 +710,11 @@
                     </tr>
                 </tbody>
             </table>
+
+            <h3>Estimated Charges Breakdown:</h3>
+            <div id="charge-breakdown-container">
+                <!-- content dynamically populated -->
+            </div>
         </div>
         <script src="rates.js"></script>
         <script src="structural-script.js"></script>
