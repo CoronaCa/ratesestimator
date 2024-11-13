@@ -5,8 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link rel="stylesheet" href="style.css">
     </head>
-    <body>     
-        <script src="index.js" defer></script>       
+    <body>            
         <div id="external-form-wrapper">
             <!-- below is OUTSIDE OF FORM calculator type picker -->
             <div class="menu-input-container form-dimensions">
@@ -433,8 +432,6 @@
                     <!-- above is shown if reclaimed water rates calculator is chosen -->
 
                     <div class="form-footer">
-                      <div><p>Click submit to see results</p>
-                      </div>
                         <div>
                             <button id="water-form-reset-button" type="reset">Reset</button>
                         </div>
@@ -488,7 +485,7 @@
                 
                 <!-- below are inputs only shown for the largeCommercialTOUGS3, industrialTOU8 classes -->
                 <div id="electric-TOUGS3-TOU8-inputs-container" class="row-container" style="display: none;">
-                    <div class="menu-input-container column-container">
+                    <!-- <div class="menu-input-container column-container">
                         <label for="summer-on-peak-demand-input">Summer On-Peak Demand (kW)</label>
                         <input 
                             id="summer-on-peak-demand-input"
@@ -505,7 +502,7 @@
                             name="kWSummerMidPeakDemand"
                             type="number"
                         >
-                    </div>
+                    </div> -->
                 </div>
                 <!-- above are inputs only shown for the largeCommercialTOUGS3, industrialTOU8 classes -->
 
@@ -612,7 +609,7 @@
 
                 <!-- below is only shown for the commercialEVChargingRate customer class -->
                 <div class="menu-input-container" id="electric-COMMEV-input-container" style="display: none;">
-                    <label for="month-demand-peak-input">Month Demand Peak (KW)</label>
+                    <label for="month-demand-peak-input">Month Demand Peak (kWh)</label>
                     <small>This is not on bills from 2024 and before. For estimation, use the <i>Facilities Related Demand</i>.</small>
                     <input 
                         id="month-demand-peak-input"
@@ -667,7 +664,7 @@
                             step="0.01"
                         >
 
-                        <label for="off-peak-energy-4-to-9-pm-input">All Other Hours (kWh)</label>
+                        <label for="off-peak-energy-4-to-9-pm-input">4 p.m. to 9 p.m. Off-Peak Energy (kWh)</label>
                         <small>This is not on bills from 2024 and before. For estimation, use <i>Summer Off-Peak Energy</i>.</small>
                         <input 
                             id="off-peak-energy-4-to-9-pm-input"
@@ -696,7 +693,7 @@
                 <thead>
                     <tr>
                         <th scope="col" id="seasons-header" style="display: none;">Seasons</th>
-                  
+                        <!-- <th scope="col">2024</th> -->
                         <th scope="col">2025</th>
                         <th scope="col">2026</th>
                         <th scope="col">2027</th>

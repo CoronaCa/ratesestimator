@@ -7,10 +7,6 @@ body {
     color: #333;
 }
 
-/* *[data-hidden="true"] {
-  display: none;
-} */
-
 #charge-breakdown-container {
     max-height: 30vh;
     overflow-y: auto;
