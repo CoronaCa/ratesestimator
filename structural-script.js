@@ -1,14 +1,23 @@
-/* NOTE: global variables from rates.js file are accessible because of html <script> tag */
+/* NOTE: global variables from files like rates.js and structural-script.js are accessible because of html <script> tag */
 
 // static containers
 const waterBillCalculatorForm = document.getElementById('water-bill-calculator-form');
 const electricBillCalculatorForm = document.getElementById('electric-bill-calculator-form');
 const calculationResultDiv = document.getElementById('calculation-result-div');
 const tableDataRow = document.getElementById('table-data-row');
+const chargeBreakdownContainer = document.getElementById('charge-breakdown-container');
 
 // conditional general containers
 const seasonsHeader = document.getElementById('seasons-header');
 const tableDataRow2 = document.getElementById('table-data-row-2');
+
+// conditional sewer containers
+const generalNonResidentialContainer = document.getElementById('general-non-residential-container');
+const insideCommercialContainer = document.getElementById('inside-commercial-container');
+const mobileHomeParksPerSpaceContainer = document.getElementById('mobile-home-parks-per-space-container');
+const motelsAndHotelsPerUnitContainer = document.getElementById('motels-and-hotels-per-unit-container');
+const motelsAndHotelsPerLivingUnitContainer = document.getElementById('motels-and-hotels-per-living-unit-container');
+const retailFoodAndEssentialServicesContainer = document.getElementById('retail-food-and-essential-services-container');
 
 // conditional water containers
 const sewerRatesContainer = document.getElementById('sewer-rates-container');
@@ -31,10 +40,7 @@ const electricGS1TC1InputContainer = document.getElementById('electric-GS1-TC1-i
 const electricCOMMEVInputContainer = document.getElementById('electric-COMMEV-input-container');
 
 // general elements
-const calculatorTypeMenu = document.getElementById('calculator-type-menu');
-
-// electric elements
-const electricCustomerClassMenu = document.getElementById('electric-customer-class-menu');
+const customerClassMenu = document.getElementById('calculator-type-menu');
 
 // residential water elements
 const waterPrivateFireIncludedMenu = document.getElementById('water-private-fire-included-menu');
@@ -42,169 +48,234 @@ const waterPrivateFireIncludedMenu = document.getElementById('water-private-fire
 // commercial water elements
 const commercialPrivateFireIncludedMenu = document.getElementById('commercial-water-private-fire-included-menu');
 
-const getArraySum = (array) => array.reduce((acc, curr) => acc += curr);
-
-let calculatorType = '';
+let customerClass = '';
+let utilityType = '';
 
 const costs = [];
 
-const resetDataTableElements = () => {
-    seasonsHeader.style.display = 'none';
-    while (tableDataRow.firstChild) {
-        tableDataRow.removeChild(tableDataRow.firstChild);
-    }
-    
-    while (tableDataRow2.firstChild) {
-        tableDataRow2.removeChild(tableDataRow2.firstChild);
-    }
+let operations = {};
+
+const resetDataDisplayElements = () => {
+  seasonsHeader.style.display = 'none';
+  while (tableDataRow.firstChild) {
+    tableDataRow.removeChild(tableDataRow.firstChild);
+  }
+
+  while (tableDataRow2.firstChild) {
+    tableDataRow2.removeChild(tableDataRow2.firstChild);
+  }
+
+  while(chargeBreakdownContainer.firstChild) {
+    chargeBreakdownContainer.removeChild(chargeBreakdownContainer.firstChild);
+  }
+};
+
+const getArraySum = (array) => array.reduce((acc, curr) => acc += curr);
+
+const getArrayProduct = (array) => array.reduce((acc, curr) => acc *= curr);
+
+const roundToNthDecimalPlace = (number, decimalPlaces) => {
+  const factor = Math.pow(10, decimalPlaces);
+  return (Math.round(number * factor) / factor).toFixed(2);
+};
+
+const formatCost = (cost) => {
+  const isNumber = !isNaN(cost);
+
+  if (isNumber && cost > 0) return `$${roundToNthDecimalPlace(cost, 2)}`;
+  else return '--';
+}
+
+const operate = ({operandValues = [], operandNames = [], operator, category}) => {
+  let total = 0;
+  const categoryExists = operations[category];
+
+  if (operator === '*') total = getArrayProduct(operandValues);
+  else if (operator === '+') total = getArraySum(operandValues);
+  else return 'No operator found.';
+
+  const roundedValues = operandValues.map((operandValue) => roundToNthDecimalPlace(operandValue, 2));
+  const operationAndTotal = `${operandNames.join(` ${operator} `)} = Total Charges\n${roundedValues.join(` ${operator} `)} = ${formatCost(total)}`;
+  if (!categoryExists && category) operations[category] = [operationAndTotal];
+  else if (!categoryExists && !category) operations['General Charges'] = [operationAndTotal];
+  else operations[category].push(operationAndTotal);
+
+  return total;
+};
+
+const displayOperations = () => {
+  const operationEntries = Object.entries(operations);
+
+  operationEntries.forEach(([category, operations]) => {
+    const chargeContainer = document.createElement('div');
+    const chargeHeader = document.createElement('h3');
+    chargeHeader.innerText = category;
+
+    chargeContainer.appendChild(chargeHeader);
+    operations.forEach(operation => {
+      const operationParagraph = document.createElement('p');
+      operationParagraph.innerText = operation;
+      chargeContainer.appendChild(operationParagraph);
+    });
+
+    chargeBreakdownContainer.appendChild(chargeContainer);
+  });
 }
 
 const resetCosts = () => costs.length = 0;
 
-const roundToNthDecimalPlace = (number, decimalPlaces) => {
-    const factor = Math.pow(10, decimalPlaces);
-    return (Math.round(number * factor) / factor).toFixed(2);
-};
+const resetOperations = () => operations = {};
 
 const makeInputsRequired = (boolean) => {
-    const inputs = document.querySelectorAll('input, select, textarea');
-    inputs.forEach(input => {
-        const isVisible = input.offsetParent !== null;
+  const inputs = document.querySelectorAll('input, select, textarea');
+  inputs.forEach(input => {
+    const isVisible = input.offsetParent !== null;
 
-        if (boolean && isVisible) input.setAttribute('required', true);
-        else input.removeAttribute('required');
-    });
+    if (boolean && isVisible) input.setAttribute('required', true);
+    else input.removeAttribute('required');
+  });
 };
 
 const showContainer = (containers, showBooleans) => {
-    makeInputsRequired(false);
-    resetDataTableElements();
-    containers.forEach((container, index) => {
-        showBooleans[index] ?
-        container.setAttribute('style', 'display: "";') : 
-        container.setAttribute('style', 'display: none;');
-    });
-    makeInputsRequired(true);
+  makeInputsRequired(false);
+  resetDataDisplayElements();
+  containers.forEach((container, index) => {
+    showBooleans[index] ?
+      container.setAttribute('style', 'display: "";') :
+      container.setAttribute('style', 'display: none;');
+  });
+  makeInputsRequired(true);
 };
 
-const formatCost = (cost) => {
-    const isNumber = !isNaN(cost);
-
-    if (isNumber && cost > 0) return `$${roundToNthDecimalPlace(cost, 2)}`;
-    else return '--';
-}
-
 const createTable = (seasonal) => {
-    const years = [2024, 2025, 2026, 2027, 2028, 2029];
+  const years = [2025, 2026, 2027, 2028, 2029];
 
-    if (seasonal) {
-        showContainer([seasonsHeader, tableDataRow2], [true, true]);
-        
-        const { seasons, seasonalCosts } = costs[0];
-        
-        const winterHeader = document.createElement('th');
-        winterHeader.id = 'winter-row';
-        winterHeader.scope = 'row';
-        winterHeader.innerText = seasons[0];
-        tableDataRow.appendChild(winterHeader);
-        seasonalCosts[0].forEach((cost, index) => {
-            const tableDataElement = document.createElement('td');
-            tableDataElement.id = `${years[index]}-${seasons[0].toLowerCase()}-cost`;
-            tableDataElement.textContent = formatCost(cost);
-    
-            tableDataRow.appendChild(tableDataElement);
-        });
+  if (seasonal) {
+    showContainer([seasonsHeader, tableDataRow2], [true, true]);
 
-        const summerHeader = document.createElement('th');
-        summerHeader.id ='summer-row';
-        summerHeader.scope = 'row';
-        summerHeader.innerText = seasons[1];
-        tableDataRow2.appendChild(summerHeader);
-        seasonalCosts[1].forEach((cost, index) => {
-            const tableDataElement = document.createElement('td');
-            tableDataElement.id = `${years[index]}-${seasons[1].toLowerCase()}-cost`;
-            tableDataElement.textContent = formatCost(cost);
-    
-            tableDataRow2.appendChild(tableDataElement);
-        });
-    } else {
-        showContainer([seasonsHeader, tableDataRow2], [false, false]);
+    const { seasons, seasonalCosts } = costs[0];
 
-        costs.forEach((cost, index) => {
-            const tableDataElement = document.createElement('td');
-            tableDataElement.id = `${years[index]}-cost`;
-            tableDataElement.textContent = formatCost(cost);
-    
-            tableDataRow.appendChild(tableDataElement);
-        });
-    }
+    const winterHeader = document.createElement('th');
+    winterHeader.id = 'winter-row';
+    winterHeader.scope = 'row';
+    winterHeader.innerText = `Winter\n(Eight Months)`;
+    tableDataRow.appendChild(winterHeader);
+    seasonalCosts[0].forEach((cost, index) => {
+      const tableDataElement = document.createElement('td');
+      tableDataElement.id = `${years[index]}-${seasons[0].toLowerCase()}-cost`;
+      tableDataElement.innerText = `Month Estimation: ${formatCost(cost)}\n\nWinter Estimation: ${formatCost(cost * 8)}`;
+
+      tableDataRow.appendChild(tableDataElement);
+    });
+
+    const summerHeader = document.createElement('th');
+    summerHeader.id ='summer-row';
+    summerHeader.scope = 'row';
+    summerHeader.innerText = `Summer\n(Four Months)`;
+    tableDataRow2.appendChild(summerHeader);
+    seasonalCosts[1].forEach((cost, index) => {
+      const tableDataElement = document.createElement('td');
+      tableDataElement.id = `${years[index]}-${seasons[1].toLowerCase()}-cost`;
+      tableDataElement.innerText = `Month Estimation: ${formatCost(cost)}\n\nSummer Estimation: ${formatCost(cost * 4)}`;
+
+      tableDataRow2.appendChild(tableDataElement);
+    });
+  } else {
+    showContainer([seasonsHeader, tableDataRow2], [false, false]);
+
+    costs.forEach((cost, index) => {
+      const tableDataElement = document.createElement('td');
+      tableDataElement.id = `${years[index]}-cost`;
+      tableDataElement.textContent = formatCost(cost);
+
+      tableDataRow.appendChild(tableDataElement);
+    });
+  }
+
+  displayOperations();
+  resetOperations();
 }
 
-const containerCoordinator = (utilityType, calculatorType) => {
-    if (utilityType === 'water') {
-        if (calculatorType === 'Sewer Rates') showContainer([waterBillCalculatorForm, sewerRatesContainer, residentialWaterRatesContainer, commercialWaterRatesContainer, reclaimedWaterRatesContainer, electricBillCalculatorForm], [true, true, false, false, false, false]);
-        else if (calculatorType === 'Residential Water Rates') showContainer([waterBillCalculatorForm, residentialWaterRatesContainer, commercialWaterRatesContainer, sewerRatesContainer, reclaimedWaterRatesContainer, electricBillCalculatorForm], [true, true, false, false, false, false]);
-        else if (calculatorType === 'Commercial Water Rates') showContainer([waterBillCalculatorForm, commercialWaterRatesContainer, residentialWaterRatesContainer, sewerRatesContainer, reclaimedWaterRatesContainer, electricBillCalculatorForm], [true, true, false, false, false, false]);
-        else if (calculatorType === 'Reclaimed Water Rates') showContainer([waterBillCalculatorForm, reclaimedWaterRatesContainer, sewerRatesContainer, residentialWaterRatesContainer, commercialWaterRatesContainer, electricBillCalculatorForm], [true, true, false, false, false, false]);
-        else showContainer([waterBillCalculatorForm, electricBillCalculatorForm], [false, false]);
-    } else if (utilityType === 'electric') {
-        showContainer([electricBillCalculatorForm, electricUniversalInputsContainer, waterBillCalculatorForm], [true, true, false], true);
-        if (calculatorType === 'residential') showContainer([electricResidentialInputsContainer, electricTOUGS3TOU8InputsContainer, electricTOUGS3TOU8PACOMMEVInputContainer, electricTOUGS3TOU8PAGS2COMMEVInputContainer, electricTOUGS3TOU8PAGS2InputContainer, electricGS1TC1InputContainer, electricCOMMEVInputContainer, electricTOUGS3TOU8PAInputsContainer], [true, false, false, false, false, false, false, false]);
-        else if (calculatorType === 'smallCommercialGS1') showContainer([electricGS1TC1InputContainer, electricResidentialInputsContainer, electricTOUGS3TOU8InputsContainer, electricTOUGS3TOU8PACOMMEVInputContainer, electricTOUGS3TOU8PAGS2COMMEVInputContainer, electricTOUGS3TOU8PAGS2InputContainer, electricCOMMEVInputContainer, electricTOUGS3TOU8PAInputsContainer], [true, false, false, false, false, false, false, false]);
-        else if (calculatorType === 'mediumCommercialGS2') showContainer([electricTOUGS3TOU8PAGS2COMMEVInputContainer, electricTOUGS3TOU8PAGS2InputContainer, electricGS1TC1InputContainer, electricResidentialInputsContainer, electricTOUGS3TOU8InputsContainer, electricTOUGS3TOU8PACOMMEVInputContainer, electricCOMMEVInputContainer, electricTOUGS3TOU8PAInputsContainer], [true, true, false, false, false, false, false, false]);
-        else if (['largeCommercialTOUGS3', 'industrialTOU8'].includes(calculatorType)) showContainer([electricTOUGS3TOU8PAGS2COMMEVInputContainer, electricTOUGS3TOU8PAGS2InputContainer, electricTOUGS3TOU8InputsContainer, electricTOUGS3TOU8PACOMMEVInputContainer, electricTOUGS3TOU8PAInputsContainer, electricGS1TC1InputContainer, electricResidentialInputsContainer, electricCOMMEVInputContainer], [true, true, true, true, true, false, false, false]);
-        else if (calculatorType === 'pumpingAndAgriculture') showContainer([electricTOUGS3TOU8PAInputsContainer, electricTOUGS3TOU8PAGS2COMMEVInputContainer, electricTOUGS3TOU8PAGS2InputContainer, electricTOUGS3TOU8PACOMMEVInputContainer, electricTOUGS3TOU8InputsContainer, electricGS1TC1InputContainer, electricResidentialInputsContainer, electricCOMMEVInputContainer], [true, true, true, true, false, false, false, false]);
-        else if (calculatorType === 'trafficControlTC1') showContainer([electricGS1TC1InputContainer, electricTOUGS3TOU8PAGS2COMMEVInputContainer, electricTOUGS3TOU8PAGS2InputContainer, electricResidentialInputsContainer, electricTOUGS3TOU8InputsContainer, electricTOUGS3TOU8PACOMMEVInputContainer, electricCOMMEVInputContainer, electricTOUGS3TOU8PAInputsContainer], [true, false, false, false, false, false, false, false]);
-        else if (calculatorType === 'commercialEVChargingRate') showContainer([electricTOUGS3TOU8PACOMMEVInputContainer, electricCOMMEVInputContainer, electricGS1TC1InputContainer, electricTOUGS3TOU8PAGS2COMMEVInputContainer, electricTOUGS3TOU8PAGS2InputContainer, electricResidentialInputsContainer, electricTOUGS3TOU8InputsContainer, electricTOUGS3TOU8PAInputsContainer], [true, true, false, false, false, false, false, false]);
-        else showContainer([electricResidentialInputsContainer, electricTOUGS3TOU8InputsContainer, electricTOUGS3TOU8PACOMMEVInputContainer, electricTOUGS3TOU8PAGS2COMMEVInputContainer, electricTOUGS3TOU8PAGS2InputContainer, electricGS1TC1InputContainer, electricCOMMEVInputContainer, electricTOUGS3TOU8PAInputsContainer], [false, false, false, false, false, false, false, false]);
-    } else return 'No container category found.';
+const containerCoordinator = (sewerCustomerGroup) => {
+  if (!utilityType || !customerClass) {
+    showContainer([waterBillCalculatorForm, electricBillCalculatorForm], [false, false]);
+    return;
+  }
+
+  if (utilityType === 'Sewer') {
+    showContainer([waterBillCalculatorForm, sewerRatesContainer, residentialWaterRatesContainer, commercialWaterRatesContainer, reclaimedWaterRatesContainer, electricBillCalculatorForm], [true, true, false, false, false, false]);
+    if (sewerCustomerGroup === 'insideStandardWastewater') showContainer([generalNonResidentialContainer, mobileHomeParksPerSpaceContainer, insideCommercialContainer, motelsAndHotelsPerUnitContainer, motelsAndHotelsPerLivingUnitContainer, retailFoodAndEssentialServicesContainer], [false, false, false, false, false, false]);
+    else if (sewerCustomerGroup === 'insideStandardWastewaterMobileHome') showContainer([generalNonResidentialContainer, mobileHomeParksPerSpaceContainer, insideCommercialContainer, motelsAndHotelsPerUnitContainer, motelsAndHotelsPerLivingUnitContainer, retailFoodAndEssentialServicesContainer], [true, true, false, false, false, false])
+    else if (sewerCustomerGroup === 'motelsAndHotelsPerUnit') showContainer([generalNonResidentialContainer, motelsAndHotelsPerUnitContainer, insideCommercialContainer, mobileHomeParksPerSpaceContainer, motelsAndHotelsPerLivingUnitContainer, retailFoodAndEssentialServicesContainer], [true, true, false, false, false, false])
+    else if (sewerCustomerGroup === 'motelsAndHotelsPerLivingUnit') showContainer([generalNonResidentialContainer, motelsAndHotelsPerLivingUnitContainer, insideCommercialContainer, mobileHomeParksPerSpaceContainer, motelsAndHotelsPerUnitContainer, retailFoodAndEssentialServicesContainer], [true, true, false, false, false, false])
+    else if (sewerCustomerGroup === 'retailFoodAndEssentialServices') showContainer([generalNonResidentialContainer,retailFoodAndEssentialServicesContainer, insideCommercialContainer, mobileHomeParksPerSpaceContainer, motelsAndHotelsPerUnitContainer, motelsAndHotelsPerLivingUnitContainer], [true, true, false, false, false, false])
+    else if (sewerCustomerGroup === 'insideCommercial') showContainer([generalNonResidentialContainer, insideCommercialContainer, mobileHomeParksPerSpaceContainer, motelsAndHotelsPerUnitContainer, motelsAndHotelsPerLivingUnitContainer, retailFoodAndEssentialServicesContainer], [true, true, false, false, false, false])
+  } else if (['Water', 'Sewer'].includes(utilityType)) {
+    if (customerClass === 'Residential Water') showContainer([waterBillCalculatorForm, residentialWaterRatesContainer, commercialWaterRatesContainer, sewerRatesContainer, reclaimedWaterRatesContainer, electricBillCalculatorForm], [true, true, false, false, false, false]);
+    else if (customerClass === 'Commercial Water') showContainer([waterBillCalculatorForm, commercialWaterRatesContainer, residentialWaterRatesContainer, sewerRatesContainer, reclaimedWaterRatesContainer, electricBillCalculatorForm], [true, true, false, false, false, false]);
+    else if (customerClass === 'Reclaimed Water') showContainer([waterBillCalculatorForm, reclaimedWaterRatesContainer, sewerRatesContainer, residentialWaterRatesContainer, commercialWaterRatesContainer, electricBillCalculatorForm], [true, true, false, false, false, false]);
+  } else if (utilityType === 'Electric') {
+    showContainer([electricBillCalculatorForm, electricUniversalInputsContainer, waterBillCalculatorForm], [true, true, false], true);
+    if (customerClass === 'residential') showContainer([electricResidentialInputsContainer, electricTOUGS3TOU8InputsContainer, electricTOUGS3TOU8PACOMMEVInputContainer, electricTOUGS3TOU8PAGS2COMMEVInputContainer, electricTOUGS3TOU8PAGS2InputContainer, electricGS1TC1InputContainer, electricCOMMEVInputContainer, electricTOUGS3TOU8PAInputsContainer], [true, false, false, false, false, false, false, false]);
+    else if (customerClass === 'smallCommercialGS1') showContainer([electricGS1TC1InputContainer, electricResidentialInputsContainer, electricTOUGS3TOU8InputsContainer, electricTOUGS3TOU8PACOMMEVInputContainer, electricTOUGS3TOU8PAGS2COMMEVInputContainer, electricTOUGS3TOU8PAGS2InputContainer, electricCOMMEVInputContainer, electricTOUGS3TOU8PAInputsContainer], [true, false, false, false, false, false, false, false]);
+    else if (customerClass === 'mediumCommercialGS2') showContainer([electricTOUGS3TOU8PAGS2COMMEVInputContainer, electricTOUGS3TOU8PAGS2InputContainer, electricGS1TC1InputContainer, electricResidentialInputsContainer, electricTOUGS3TOU8InputsContainer, electricTOUGS3TOU8PACOMMEVInputContainer, electricCOMMEVInputContainer, electricTOUGS3TOU8PAInputsContainer], [true, true, false, false, false, false, false, false]);
+    else if (['largeCommercialTOUGS3', 'industrialTOU8'].includes(customerClass)) showContainer([electricTOUGS3TOU8PAGS2COMMEVInputContainer, electricTOUGS3TOU8PAGS2InputContainer, electricTOUGS3TOU8InputsContainer, electricTOUGS3TOU8PACOMMEVInputContainer, electricTOUGS3TOU8PAInputsContainer, electricGS1TC1InputContainer, electricResidentialInputsContainer, electricCOMMEVInputContainer], [true, true, true, true, true, false, false, false]);
+    else if (customerClass === 'pumpingAndAgriculture') showContainer([electricTOUGS3TOU8PAInputsContainer, electricTOUGS3TOU8PAGS2COMMEVInputContainer, electricTOUGS3TOU8PAGS2InputContainer, electricTOUGS3TOU8PACOMMEVInputContainer, electricTOUGS3TOU8InputsContainer, electricGS1TC1InputContainer, electricResidentialInputsContainer, electricCOMMEVInputContainer], [true, true, true, true, false, false, false, false]);
+    else if (customerClass === 'trafficControlTC1') showContainer([electricGS1TC1InputContainer, electricTOUGS3TOU8PAGS2COMMEVInputContainer, electricTOUGS3TOU8PAGS2InputContainer, electricResidentialInputsContainer, electricTOUGS3TOU8InputsContainer, electricTOUGS3TOU8PACOMMEVInputContainer, electricCOMMEVInputContainer, electricTOUGS3TOU8PAInputsContainer], [true, false, false, false, false, false, false, false]);
+    else if (customerClass === 'commercialEVChargingRate') showContainer([electricTOUGS3TOU8PACOMMEVInputContainer, electricCOMMEVInputContainer, electricGS1TC1InputContainer, electricTOUGS3TOU8PAGS2COMMEVInputContainer, electricTOUGS3TOU8PAGS2InputContainer, electricResidentialInputsContainer, electricTOUGS3TOU8InputsContainer, electricTOUGS3TOU8PAInputsContainer], [true, true, false, false, false, false, false, false]);
+  } else return 'No utility type found.';
 }
 
 // Call the function to set the inputs as required
 makeInputsRequired();
 
 // general event listeners
-calculatorTypeMenu.addEventListener('change', (event) => {
-    const calculatorTypeValue = event?.currentTarget.value;
-    const utilityType = calculatorTypeValue.includes('Electric') ? 'electric' : 'water';
-    
-    calculatorType = calculatorTypeValue;
-    containerCoordinator(utilityType, calculatorTypeValue);
+customerClassMenu.addEventListener('change', (event) => {
+  const selectMenuEvent = event?.currentTarget;
+  const selectedMenuOption = selectMenuEvent.options[selectMenuEvent.selectedIndex];
+
+  const customerClassValue = selectMenuEvent.value;
+  const utilityTypeValue = selectedMenuOption.getAttribute('data-group');
+
+  customerClass = customerClassValue;
+  utilityType = utilityTypeValue;
+  containerCoordinator();
+
+  if (utilityType === 'Sewer') findSewerCustomerClassGroup();
 });
 waterBillCalculatorForm.addEventListener('submit', (event) => {
-    event.preventDefault();
-    try {
-        if (calculatorType === 'Sewer Rates') getSewerRate(event);
-        else if (calculatorType === 'Residential Water Rates') getWaterRate(event);
-        else if (calculatorType === 'Commercial Water Rates') getWaterRate(event);
-        else if (calculatorType === 'Reclaimed Water Rates') getReclaimedWaterRate(event);
-        createTable();
-    } catch (error) {
-        console.error(error);
-    }
+  event.preventDefault();
+  try {
+    if (utilityType === 'Sewer') getSewerRate(event);
+    else if (customerClass === 'Residential Water') getWaterRate(event);
+    else if (customerClass === 'Commercial Water') getWaterRate(event);
+    else if (customerClass === 'Reclaimed Water') getReclaimedWaterRate(event);
+    createTable();
+  } catch (error) {
+    console.error(error);
+  }
 });
 
 // electric event listeners
-electricBillCalculatorForm.addEventListener('submit', (event) => { 
-    event.preventDefault();
-    try {
-        getElectricRate(event);
-    } catch (error) {
-        console.error(error);
-    }
+electricBillCalculatorForm.addEventListener('submit', (event) => {
+  event.preventDefault();
+  try {
+    getElectricRate(event);
+  } catch (error) {
+    console.error(error);
+  }
 });
-electricCustomerClassMenu.addEventListener('change', (event) => containerCoordinator('electric', event?.target.value));
 
 // water event listeners
 waterPrivateFireIncludedMenu.addEventListener('change', (event) => {
-    const privateFireIncluded = event?.target.value === 'true';
-    if (privateFireIncluded) showContainer([privateFireIncludedContainer], [true]);
-    else showContainer([privateFireIncludedContainer], [false]);
+  const privateFireIncluded = event?.target.value === 'true';
+  if (privateFireIncluded) showContainer([privateFireIncludedContainer], [true]);
+  else showContainer([privateFireIncludedContainer], [false]);
 });
 
 // commercial water menu event listeners
 commercialPrivateFireIncludedMenu.addEventListener('change', (event) => {
-    const privateFireIncluded = event?.target.value === 'true';
-    if (privateFireIncluded) showContainer([privateFireIncludedCommercialContainer], [true]);
-    else showContainer([privateFireIncludedCommercialContainer], [false]);
+  const privateFireIncluded = event?.target.value === 'true';
+  if (privateFireIncluded) showContainer([privateFireIncludedCommercialContainer], [true]);
+  else showContainer([privateFireIncludedCommercialContainer], [false]);
 });
